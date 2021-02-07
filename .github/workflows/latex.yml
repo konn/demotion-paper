@@ -59,6 +59,7 @@ jobs:
           apt-get install -y python-pygments
       - name: Dry-run pygmentize
         run: |
+          echo $PATH
           pygmentize -V
       - name: Typeset it
         run: |
