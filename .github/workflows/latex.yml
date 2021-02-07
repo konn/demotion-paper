@@ -54,7 +54,8 @@ jobs:
           else
             echo "::warn::No .latex/ directory found. skip"
           fi
-      - name: | 
+      - name: Install pygments
+        run: |
           apt-get install -y python-pygments
       - name: Typeset it
         run: |
