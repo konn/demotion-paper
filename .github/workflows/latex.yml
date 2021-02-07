@@ -57,6 +57,9 @@ jobs:
       - name: Install pygments
         run: |
           apt-get install -y python-pygments
+      - name: Dry-run pygmentize
+        run: |
+          pygmentize -V
       - name: Typeset it
         run: |
           cd ${GITHUB_WORKSPACE}/${WORKDIR}
