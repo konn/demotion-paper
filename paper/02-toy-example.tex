@@ -1,0 +1,61 @@
+% !TeX root = demotion-paper.tex
+\documentclass[demotion-paper.tex]{subfiles}
+\begin{document}
+\section{Toy Example: Demoting Type-level GCD}
+Let's begin with a simple example of type-level greatest common divisors (GCDs).
+It is quite simple as all we have to do is just to implement Euclidean algorithm:
+
+\begin{code}
+{-# LANGUAGE DataKinds, TypeFamilies, UndecidableInstances #-}
+import GHC.TypeLits
+
+type family GCD (n :: Nat) (m :: Nat) :: Nat where
+  GCD 0 m = m
+  GCD n 0 = n
+  GCD n m = GCD (Mod m n) n
+\end{code}
+
+So far so good.
+
+\begin{repl}
+>>> :kind! GCD 12 9
+GCD 12 9 :: Nat
+= 3
+\end{repl}
+
+Suppose we want to ``demote'' this definition of ``GCD'' to expression-level using singletons, i.e. we want to implement the following function \hask{sGCD}:
+
+\begin{code}
+sGCD :: SNat n -> SNat m -> SNat (GCD n m)
+\end{code}
+
+Assuming that \hask{SNat} has \hask{TestEquality} instance, one might first attempt to write it as follows:
+
+\begin{code}
+sZero :: SNat 0
+sZero = sNat
+
+sGCD :: SNat n -> SNat m -> SNat (GCD n m)
+sGCD sn sm = case (testEquality sn sZero, testEquality sm sZero) of
+  (Just Refl, _) -> sm
+  (_, Just Refl) -> sn
+  (Nothing, Nothing) -> sGCD (sMod sm sn) sn
+\end{code}
+
+First two lines type-checks as expected, but the last case results in the following type error:
+
+\begin{repl}
+• Couldn't match type ‘GCD (Mod m n) n’ with ‘GCD n m’
+  Expected type: SNat (GCD n m)
+    Actual type: SNat (GCD (Mod m n) n)
+  NB: ‘GCD’ is a non-injective type family
+• In the expression: sGCD (sMod sm sn) sn
+  In a case alternative: (Nothing, Nothing) -> sGCD (sMod sm sn) sn
+  In the expression:
+    case (testEquality sn sZero, testEquality sm sZero) of
+      (Just Refl, _) -> sm
+      (_, Just Refl) -> sn
+      (Nothing, Nothing) -> sGCD (sMod sm sn) sn
+\end{repl}
+
+\end{document}

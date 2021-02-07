@@ -158,6 +158,9 @@
     },
     {
       "name": "center"
+    },
+    {
+      "name": "gather*"
     }
   ],
   "catex.section.dictionary": [
@@ -489,5 +492,6 @@
         }
       ]
     }
-  ]
+  ],
+  "latex-workshop.latex.rootFile.doNotPrompt": true
 }
