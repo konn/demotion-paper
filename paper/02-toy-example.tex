@@ -58,4 +58,175 @@ First two lines type-checks as expected, but the last case results in the follow
       (Nothing, Nothing) -> sGCD (sMod sm sn) sn
 \end{repl}
 
+Why? The definition of \hask{sGCD} seems almost literally the same as type-level \hask{GCD}.
+It first match \hask{n} against \hask{0}, then \hask{m} against \hask{0}, and finally fallbacks to the term \hask{GCD (Mod m n) n}.
+
+Carefully analysing first two cases, one can realise that there are additional type-level constraint introduced by \hask{Refl} GADT constructor:
+
+\begin{code}
+data (:~:) a b where
+  Refl :: a :~: a
+\end{code}
+
+Thus, in the first two cases, the compiler can tell either \hask{n ~ 0} or \hask{m ~ 0}.
+Since the \hask{GCD} is defined as a closed type family, the compiler can match clauses in a top-down manner and successfully apply either of the first two clause of the definition of \hask{GCD} and type-checker passes.
+In other words, the constructor \hask{Refl} \emph{witnesses} the evaluation path of type-level function \hask{GCD}.
+
+In the last case, however, there is no additional type-level constraints available.
+Despite humans can still think ``all the \hask{Refl} clauses failed to match, hence the non-equal clause must apply here'', this intuition is not fully expressed in the type-level constraint!
+
+So we have to give compiler some \emph{witness} to convince them.
+What kind of witness needed here?
+Well, we need to teach the compiler which clause of the type family definition used.
+In this case, branching of clause is caused by type-level equality: the evaluation path depends on whether \hask{n} or \hask{m} is \hask{0} or not.
+First, let's make this intuition clear in the definition of \hask{GCD}:
+
+\begin{code}
+import Data.Type.Equality (type (==)) -- from base
+
+type GCD n m = GCD_ (n == 0) (m == 0) n m
+type family GCD_ nEq0 mEq0 n m :: Nat where
+  GCD_ 'True  _      _ m = m   -- n ~ 0; return m
+  GCD_ 'False 'True  n _ = n   -- m ~ 0; return n
+  GCD_ 'False 'False n m = GCD_ (Mod m n == 0) 'False (Mod m n) n  -- neither!
+\end{code}
+
+Here, we have two type-level functions: newly defined one, \hask{GCD_}, is a main loop implementing Euclidean algorithm.
+Now, \hask{GCD_} takes not only natural numbers to calculate \hask{GCD}, but also type-level \hask{Bool}ean-values that record equality of \hask{n} and \hask{m} with \hask{0}.
+From this, GHC can tell exactly which clause is taken from the first two type-arguments.
+Then, the redefined type synonym \hask{GCD} just calls \hask{GCD_} with the needed information.
+
+Now that we can give the compiler witnesses as the first two type-arguments of \hask{GCD_}, we are set to implement \hask{sGCD}.
+
+First, we need \emph{demoted} version of type-level \hask{(==)}.
+The first attempt might go as follows:
+\begin{code}
+data SBool p where
+  STrue  :: SBool 'True
+  SFalse :: SBool 'False
+
+(%==) :: TestEquality f => f a -> f b -> SBool (a == b)
+sa %== sb = case testEquality sa sb of
+  Just Refl -> STrue
+  Nothing -> SFalse
+\end{code}
+Unfortunately, this doesn't work as expected.
+The first error on \hask{STrue} says:
+
+\begin{repl}
+• Could not deduce: (a == a) ~ 'True
+  from the context: b ~ a
+    bound by a pattern with constructor:
+               Refl :: forall k (a :: k). a :~: a,
+             in a case alternative
+    at /Users/hiromi/Documents/research/demotion-paper/demotion-examples/src/Data/Type/Nat/GCD.hs:33:8-11
+  Expected type: SBool (a == b)
+    Actual type: SBool 'True
+\end{repl}
+
+This is due to the definition of type-level \hask{(==)} in GHC base library:
+
+\begin{code}
+type family a == b where
+  f a == g b = (f == g) && (a == b)
+  a   == a   = 'True
+  _   == _   = 'False
+\end{code}
+
+The complication of the first clause is intensional.
+As described in the documentation~\cite{GHC-Team:2021aa}, the intuition behind this is to let the compiler to infer, e.g.\ \hask{a == b} from \hask{Just a == Just b}.
+This is because any compound type matches only on the first clause.
+
+This behaviour is desirable when one \emph{consumes} the constraint \hask{(a == b) ~ 'True}.
+But when one wants to \emph{produce} an evidence of \hask{(a == b) ~ 'True}, we cannot make use of the evidence given by \hask{Refl}.
+This is, again, due to the lack of witness of the evaluation path: the compiler cannot determine which clause should be taken to compute \hask{a == b} if \hask{a} and \hask{b} are both opaque variable!
+
+A solution here is just to define another type family, which requires only bare equality:
+\begin{code}
+type family a === b where
+  a === a = 'True
+  _ === _ = 'False
+\end{code}
+
+Demoted version of this now gets:
+
+\begin{code}
+(%===) :: TestEquality f => f a -> f b -> SBool (a === b)
+sa %=== sb = case testEquality sa sb of
+  Just Refl -> STrue
+  Nothing -> SFalse  
+\end{code}
+
+Now, the type-error remains on the last clause: \hask{SFalse}.
+This is also due to the lack of witness of being distinct.
+But, wait! We are fighting until here to produce such a negative witness of non-equality, which in turn requires itself. A vicious cycle!
+
+At this very point, there is no other way than resorting to the ancient cursed spell: \hask{unsafeCoerce}:
+
+\begin{code}
+import Unsafe.Coerce
+
+(%===) :: TestEquality f => f a -> f b -> SBool (a === b)
+sa %=== sb = case testEquality sa sb of
+  Just Refl -> STrue
+  Nothing -> unsafeCoerce SFalse  
+\end{code}
+
+This use of \hask{unsafeCoerce} is inherently inevitable.
+Fortunately, provided that \hask{TestEquality} instance is implemented soundly, this use of \hask{unsafeCoerce} is not cursed: this is just postulating an axiom that is true but there is no way to tell it to the compiler safely\footnote{Of course, one must pay attension whether coerced values have the same representation. In this case it is completely legitimate use.}.
+If when wants to construct an evidence of type-level (non-)equality solely from the expression, we must assume some axiom and introduce it by \hask{unsafeCoerce}.
+This is how the library builder usually do when one implements basic (expression-level) operators to manipulate type-level values.
+Such ``trust me'' axioms can be found, for example, in \hask{TestEquality TypeRep} instance in \texttt{base}, and various \hask{SEq} instances in \texttt{singletons}~\cite{singletons} package.
+
+Anyway, we are finally at the point of implementing working \hask{sGCD}, replacing every occurrence of \hask{(==)} with our custom \hask{(===)}:
+
+\begin{code}
+type GCD n m = GCD_ (n === 0) (m === 0) n m
+
+type family GCD_ nEq0 mEq0 n m :: Nat where
+  GCD_ 'True  _      _ m = m -- n is zero; return m
+  GCD_ 'False 'True  n _ = n -- m is zero; return n
+  GCD_ 'False 'False n m = GCD_ (Mod m n === 0) 'False (Mod m n) n
+
+sGCD :: SNat n -> SNat m -> SNat (GCD n m)
+sGCD sn sm = case (sn %=== sZero, sm %=== sZero) of
+  (STrue, _) -> sm
+  (SFalse, STrue) -> sn
+  (SFalse, SFalse) -> sGCD (sMod sm sn) sn
+\end{code}
 \end{document}
+
+Finally, the compiler gets happy with all the definitions!
+
+\subsection{Notes on Equality}
+At this point, we have three type-level (homogeneous) equalities:
+\begin{enumerate}
+\item Built-in equality constraint \hask{a ~ b},
+\item Boolean equality \hask{a == b}, which plays well with compound types, and
+\item Boolean equality \hask{a === b}, which takes only the reflexivity into account.
+\end{enumerate}
+These three equalities can play their roles case-by-case, although their extension must coincide.
+Hence, it is convenient to pack all these (non-)equalities into a single witness:
+
+\begin{code}
+data Equality a b where
+  Equal :: ((a == b) ~ 'True, a ~ b, (a === b) ~ 'True) => Equality a b
+  NonEqual
+    :: ((a === b) ~ 'False, (a == b) ~ 'False) => Equality a b
+\end{code}
+
+As expressed by the constructor names, here \hask{Equal} witnesses the equality of given two types, and \hask{NonEqual} witnesses \emph{non}-equality.
+In this way, \hask{Equality} packages both \emph{positive} (equal) and \emph{negative} (non-equal) witnesses.
+
+One might wonder why we didn't mention equality \emph{constraint} \hask{a ~ b} in \hask{NonEqual}-case.
+This is because GHC can infer that \hask{a :~: b} is not inhabited from the fact that \hask{(a === b) ~ 'False}:
+
+\begin{code}
+{-# LANGUAGE EmptyCase, LambdaCase #-}
+import Data.Void
+fromFalseEq :: (a === b) ~ 'False => a :~: b -> Void
+fromFalseEq = \case {}
+\end{code}
+
+\subsection{Summary}
+

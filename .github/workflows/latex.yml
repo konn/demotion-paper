@@ -36,6 +36,7 @@ jobs:
           path: |
             ${{env.WORKDIR}}/${{env.JOBNAME}}.fdb_latexmk
             ${{env.WORKDIR}}/.latex/
+            ${{env.WORKDIR}}/_minted-demotion-paper
 
           # An explicit key for restoring and saving the cache
           key: ${{env.JOBNAME}}-${{github.ref}}-${{ runner.os }}-${{ hashFiles('**/*.tex', '**/*.sty', '**/*.fdb_latexmk', 'extract-generateds.lua') }}

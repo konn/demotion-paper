@@ -1,11 +1,13 @@
 \usepackage{minted}
 \setminted{style=bw}
+
 \newminted[code]{haskell}{%
-  mathescape,linenos,numbersep=5pt,frame=lines,framesep=2mm,%
-  }
+mathescape,linenos,numbersep=5pt,frame=lines,framesep=2mm,%
+}
+\newminted[repl]{haskell}{%
+mathescape,numbersep=5pt,frame=lines,framesep=2mm,%
+}
 
-  \newminted[repl]{haskell}{%
-  mathescape,numbersep=5pt,frame=lines,framesep=2mm,%
-  }
-
-\DeclareTotalTCBox{\hask}{v}{box align=base,verbatim,colback=lightgray,colframe=gray}{\mintinline{haskell}{#1}}
+\DeclareTotalTCBox{\hask}{v}{%
+box align=base,verbatim,colback=lightgray,colframe=gray%
+}{\mintinline[fontsize=\SMALL]{haskell}{#1}}
