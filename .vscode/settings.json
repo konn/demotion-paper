@@ -1,0 +1,493 @@
+{
+  "grammarly.userWords": [
+    "dtx",
+    "injectCoeff",
+    "lualatex"
+  ],
+  "github-actions.workflows.pinned.refresh.enabled": true,
+  "github-actions.workflows.pinned.workflows": [
+    ".github/workflows/latex.yml",
+  ],
+  "catex.image-completion": {
+    "name": "CaTeX Image Completion",
+    "languages": [
+      "latex"
+    ],
+    "triggers": [
+      ";"
+    ],
+    "dictionary": [
+      "defaults/images.json",
+      {
+        "label": "/>",
+        "body": "nearrow",
+        "description": "↗"
+      },
+      { "label": "|`",
+        "body": "upharpoonright",
+        "description": "↾"
+      }
+      ],
+    "renderMode": "latex"
+  },
+  "catex.environment.dictionary": [
+    "defaults/environments.json",
+    {
+      "name": "tikzpicture",
+      "args": [
+        "options"
+      ]
+    },
+    {
+      "name": "scope",
+      "args": [
+        {
+          "kind": "optional",
+          "placeholder": "feat=val"
+        }
+      ]
+    },
+    {
+      "name": "fact",
+      "args": [
+        {
+          "kind": "optional",
+          "placeholder": "title"
+        }
+      ]
+    },
+    {
+      "name": "remark",
+      "args": [
+        {
+          "kind": "optional",
+          "placeholder": "title"
+        }
+      ]
+    },
+    {
+      "name": "definition",
+      "args": [
+        {
+          "kind": "optional",
+          "placeholder": "title"
+        }
+      ]
+    },
+    {
+      "name": "theorem",
+      "args": [
+        {
+          "kind": "optional",
+          "placeholder": "title"
+        }
+      ]
+    },
+    {
+      "name": "corollary",
+      "args": [
+        {
+          "kind": "optional",
+          "placeholder": "title"
+        }
+      ]
+    },
+    {
+      "name": "lemma",
+      "args": [
+        {
+          "kind": "optional",
+          "placeholder": "title"
+        }
+      ]
+    },
+    {
+      "name": "notation",
+      "args": [
+        {
+          "kind": "optional",
+          "placeholder": "title"
+        }
+      ]
+    },
+    {
+      "name": "proof",
+      "args": [
+        {
+          "kind": "optional",
+          "placeholder": "title"
+        }
+      ]
+    },
+    {
+      "name": "algorithm",
+      "args": [
+        {
+          "kind": "optional",
+          "placeholder": "Weil algebra test"
+        }
+      ]
+    },
+    {
+      "name": "alg"
+    },
+    {
+      "name": "code"
+    },
+    {
+      "name": "description",
+      "args": [
+        {
+          "kind": "optional"
+        }
+      ]
+    },
+    {
+      "name": "haskell"
+    },
+    {
+      "name": "align*"
+    },
+    {
+      "name": "alignat*",
+      "args": [
+        {
+          "kind": "fixed"
+        }
+      ]
+    },
+    {
+      "name": "center"
+    }
+  ],
+  "catex.section.dictionary": [
+    {
+      "include": "defaults/sections.json"
+    },
+    {
+      "name": "nocite",
+      "args": [
+        {
+          "kind": "fixed"
+        }
+      ]
+    },
+    {
+      "name": "braket",
+      "args": [
+        {
+          "kind": "fixed"
+        }
+      ]
+    },
+    {
+      "name": "finseq",
+      "args": [
+        {
+          "kind": "fixed"
+        }
+      ]
+    },
+    {
+      "name": "Set",
+      "args": [
+        {
+          "kind": "fixed"
+        }
+      ]
+    },
+    {
+      "name": "circled",
+      "args": [
+        {
+          "kind": "fixed"
+        }
+      ]
+    },
+    {
+      "name": "mathreg",
+      "args": [
+        {
+          "kind": "fixed"
+        }
+      ]
+    },
+    {
+      "name": "quoted",
+      "args": [
+        {
+          "kind": "fixed"
+        }
+      ]
+    },
+    {
+      "name": "onslide",
+      "args": [
+        {
+          "kind": "fixed"
+        }
+      ]
+    },
+    {
+      "name": "truth",
+      "args": [
+        {
+          "kind": "fixed"
+        }
+      ]
+    },
+    {
+      "name": "enquote",
+      "args": [
+        {
+          "kind": "fixed"
+        }
+      ]
+    },
+    {
+      "name": "label",
+      "args": [
+        {
+          "kind": "fixed"
+        }
+      ]
+    },
+    {
+      "name": "Cref",
+      "args": [
+        {
+          "kind": "fixed"
+        }
+      ]
+    },
+    {
+      "name": "theorembodyfont",
+      "args": [
+        {
+          "kind": "fixed",
+          "placeholder": "\\normalfont",
+          "body": true
+        }
+      ]
+    },
+    {
+      "name": "\"",
+      "args": [
+        {
+          "kind": "fixed"
+        }
+      ]
+    },
+    {
+      "name": "mathord",
+      "args": [
+        {
+          "kind": "fixed"
+        }
+      ]
+    },
+    {
+      "name": "lstnewenvironment",
+      "args": [
+        {
+          "kind": "fixed",
+          "placeholder": "env"
+        },
+        {
+          "kind": "optional"
+        },
+        {
+          "kind": "fixed",
+          "placeholder": "BEFORE"
+        },
+        {
+          "kind": "fixed",
+          "placeholder": "AFTER"
+        }
+      ]
+    },
+    {
+      "name": "mathbin",
+      "args": [
+        {
+          "kind": "fixed"
+        }
+      ]
+    },
+    {
+      "name": "AtBeginDocument",
+      "args": [
+        {
+          "kind": "fixed"
+        }
+      ]
+    },
+    {
+      "name": "fxwarning",
+      "args": [
+        {
+          "kind": "fixed",
+          "placeholder": "FIXME: "
+        }
+      ]
+    },
+    {
+      "name": "nth",
+      "args": [
+        {
+          "kind": "fixed"
+        }
+      ]
+    },
+    {
+      "name": "setlist",
+      "args": [
+        {
+          "kind": "optional",
+          "placeholder": "kind"
+        },
+        {
+          "kind": "fixed",
+          "placeholder": "key=val"
+        }
+      ]
+    },
+    {
+      "name": "mathop",
+      "args": [
+        {
+          "kind": "fixed"
+        }
+      ]
+    },
+    {
+      "name": "newindex",
+      "args": [
+        {
+          "kind": "optional",
+          "placeholder": "thecounter"
+        },
+        {
+          "kind": "fixed",
+          "placeholder": "name"
+        },
+        {
+          "kind": "fixed",
+          "placeholder": "idx"
+        },
+        {
+          "kind": "fixed",
+          "placeholder": "ind"
+        },
+        {
+          "kind": "fixed",
+          "placeholder": "title"
+        }
+      ]
+    },
+    {
+      "name": "RequirePackage",
+      "args": [
+        {
+          "kind": "fixed",
+          "placeholder": "package"
+        }
+      ]
+    },
+    {
+      "name": "fxwarning*",
+      "args": [
+        {
+          "kind": "fixed",
+          "placeholder": "note"
+        },
+        {
+          "kind": "fixed",
+          "placeholder": "body",
+          "body": true
+        }
+      ]
+    },
+    {
+      "name": "marginpar",
+      "args": [
+        {
+          "kind": "fixed"
+        }
+      ]
+    },
+    {
+      "name": "setmonofont",
+      "args": [
+        {
+          "kind": "optional",
+          "placeholder": "feat=val"
+        },
+        {
+          "kind": "fixed",
+          "placeholder": "fontname"
+        }
+      ]
+    },
+    {
+      "name": "titlecontents",
+      "args": [
+        {
+          "kind": "fixed",
+          "placeholder": "section"
+        },
+        {
+          "kind": "optional",
+          "placeholder": "1\\zw"
+        },
+        {
+          "kind": "fixed"
+        },
+        {
+          "kind": "fixed",
+          "placeholder": "\\thecontentslabel"
+        },
+        {
+          "kind": "fixed"
+        },
+        {
+          "kind": "fixed",
+          "placeholder": "\\hfill\\thecontentspage"
+        },
+        {
+          "kind": "optional"
+        }
+      ]
+    },
+    {
+      "name": "uwave",
+      "args": [
+        {
+          "kind": "fixed"
+        }
+      ]
+    },
+    {
+      "name": "addbibresource",
+      "args": [
+        {
+          "kind": "fixed",
+          "placeholder": "reference.bib"
+        }
+      ]
+    },
+    {
+      "name": "rem",
+      "args": [
+        {
+          "kind": "fixed",
+          "placeholder": "base"
+        },
+        {
+          "kind": "fixed",
+          "placeholder": "modulus"
+        }
+      ]
+    }
+  ]
+}
