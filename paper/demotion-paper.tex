@@ -1,6 +1,4 @@
-\documentclass[acmsmall,natbib=false]{acmart}
-\usepackage[backend=biber,style=ACM-Reference-Format]{biblatex}
-\addbibresource{references.bib}
+\documentclass[acmsmall]{acmart}
 
 \setcopyright{acmcopyright}
 \copyrightyear{2021}
@@ -91,7 +89,8 @@
 Techniques proposed in this paper were found while developping a PDE solver at DeepFlow, Inc.
 \end{acks}
 
-\printbibliography
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{references.bib}
 
 \appendix
 
