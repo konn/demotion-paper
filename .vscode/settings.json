@@ -491,7 +491,30 @@
           "placeholder": "modulus"
         }
       ]
+    },
+    {
+      "name": "subfile",
+      "args": [
+        {
+          "kind": "fixed"
+        }
+      ]
     }
   ],
-  "latex-workshop.latex.rootFile.doNotPrompt": true
+  "latex-workshop.latex.rootFile.doNotPrompt": true,
+  "todohighlight.include": [
+    "**/*.js",
+    "**/*.jsx",
+    "**/*.ts",
+    "**/*.tsx",
+    "**/*.html",
+    "**/*.php",
+    "**/*.css",
+    "**/*.scss",
+    "**/*.hs",
+    "**/*.tex"
+  ],
+  "todo.archive.remove.emptyProjects": false,
+  "todo.embedded.provider": "ag",
+  "todo.embedded.providers.ag.regex": "(?:%|#|// @|//|/\\*+|<!--|--|\\* @|\\{!|\\{\\{!--|\\{\\{!) *(TODO|FIXME|FIX|BUG|UGLY|HACK|NOTE|IDEA|REVIEW|DEBUG|OPTIMIZE)"
 }
