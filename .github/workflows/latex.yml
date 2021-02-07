@@ -59,7 +59,7 @@ jobs:
           apt-get update && apt-get install -y python-pygments
       - name: Dry-run pygmentize
         run: |
-          pygmentize -V
+          /usr/bin/pygmentize -V
       - name: Typeset it
         run: |
           cd ${GITHUB_WORKSPACE}/${WORKDIR}
