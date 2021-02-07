@@ -56,10 +56,9 @@ jobs:
           fi
       - name: Install pygments
         run: |
-          apt-get install -y python-pygments
+          apt-get update && apt-get install -y python-pygments
       - name: Dry-run pygmentize
         run: |
-          echo $PATH
           pygmentize -V
       - name: Typeset it
         run: |
