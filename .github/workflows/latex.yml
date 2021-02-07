@@ -54,6 +54,8 @@ jobs:
           else
             echo "::warn::No .latex/ directory found. skip"
           fi
+      - name: | 
+          apt-get install -y python-pygments
       - name: Typeset it
         run: |
           cd ${GITHUB_WORKSPACE}/${WORKDIR}
