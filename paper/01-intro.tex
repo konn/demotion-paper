@@ -9,6 +9,33 @@ brabra...
 
 Brouwer--Heyting--Kolmogorov (BHK) interpretation of intuitionistic logic: proofs of some proposition are identified with witnessing ``functions''.
 For example, proof of $P \land Q$ is given by the pair of proofs $\tau: P$ and $\upsilon: Q$; $P \to Q$ is given by a function taking a proof of $P$ and returns $Q$, ---and so on.
-This conception of intuitionistic logic is later made precise as Curry-Howard correspondance and Kleene's Realaisability Model.
+This conception of intuitionistic logic is later made precise as Curry-Howard correspondence and Kleene realisability.
 
+\subsection{Preliminaries}
+Throughout this paper, we use the standard method of \emph{singleton}~\cite{Eisenberg:2012} to simulate dependent types in Haskell.
+In particular, we assume the following API\footnote{working example library will be available after blind-review.}:
+
+\begin{code}
+type family Sing :: k -> Type
+
+class Known a where
+  sing :: Sing a
+withKnown :: Sing a -> (Known a => r) -> r
+
+type instance Sing = (SNat :: Nat -> Type)
+sNat :: KnownNat n => SNat n
+
+withKnownNat :: SNat n -> (KnownNat n => r) -> r
+(%+) :: SNat n -> SNat m -> SNat (n + m)
+sMod :: SNat n -> SNat m -> SNat (n `Mod` m)
+\end{code}
+
+For the detail of singleton-based programming, we refer readers to Eisenberg--Weirich~\cite{Eisenberg:2012} and Lindley--McBride~\cite{10.1145/2503778.2503786}.
+
+We use the following convention:
+\begin{enumerate}
+\item We prefix with the capital \hask{S} for singleton type: for example, \hask{SNat} is the singleton type of the kind \hask{Nat}.
+\item For type-level function we use small \hask{s} as a prefix for singletonised  expression-level function: \hask{sMod} is the singletonised version of \hask{Mod}.
+\item For operators, we prefix with \hask{%}: \hask{(%+)} is a singleton for type-level \hask{+}.
+\end{enumerate}
 \end{document}

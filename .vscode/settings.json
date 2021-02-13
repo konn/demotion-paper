@@ -161,6 +161,9 @@
     },
     {
       "name": "gather*"
+    },
+    {
+      "name": "enumerate"
     }
   ],
   "catex.section.dictionary": [
@@ -499,9 +502,16 @@
           "kind": "fixed"
         }
       ]
+    },
+    {
+      "name": "hask",
+      "args": [
+        {
+          "kind": "fixed"
+        }
+      ]
     }
   ],
-  "latex-workshop.latex.rootFile.doNotPrompt": true,
   "todohighlight.include": [
     "**/*.js",
     "**/*.jsx",
@@ -515,6 +525,9 @@
     "**/*.tex"
   ],
   "todo.archive.remove.emptyProjects": false,
+  "todo.embedded.include": [
+    "**/*.tex", "**/*.hs", "**/*.md"
+  ],
   "todo.embedded.provider": "ag",
   "todo.embedded.providers.ag.regex": "(?:%|#|// @|//|/\\*+|<!--|--|\\* @|\\{!|\\{\\{!--|\\{\\{!) *(TODO|FIXME|FIX|BUG|UGLY|HACK|NOTE|IDEA|REVIEW|DEBUG|OPTIMIZE)"
 }

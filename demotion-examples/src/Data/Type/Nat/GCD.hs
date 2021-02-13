@@ -12,11 +12,11 @@
 
 module Data.Type.Nat.GCD where
 
-import Data.Type.Bool
+import Data.Type.Bool (type (&&))
 import Data.Type.Equality (TestEquality, testEquality, (:~:) (Refl), type (==))
-import Data.Type.Natural (Equality (Equal, NonEqual), SBool (SFalse, STrue), SNat, SOrdering (..), sCmpNat, sMod, sNat, (%~))
+import Data.Type.Natural (SBool (SFalse, STrue), SNat, sMod, sNat)
 import Data.Void
-import GHC.TypeNats (CmpNat, Mod, Nat)
+import GHC.TypeNats (Mod, Nat)
 import Unsafe.Coerce (unsafeCoerce)
 
 -- from base
