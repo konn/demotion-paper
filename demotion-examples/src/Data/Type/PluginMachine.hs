@@ -7,6 +7,7 @@
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE KindSignatures #-}
+{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RankNTypes #-}
@@ -27,7 +28,6 @@ import Control.Monad.Reader.Class (MonadReader)
 import Control.Monad.Trans.Reader (Reader)
 import Data.Kind (Constraint, Type)
 import Data.Proxy (Proxy (..))
-import Data.Type.Equality (TestEquality)
 import Data.Type.Natural
   ( Equality (Equal, NonEqual),
     SBool (SFalse, STrue),
@@ -35,7 +35,6 @@ import Data.Type.Natural
     SOrdering (SEQ, SGT, SLT),
     sNat,
     toNatural,
-    withKnownNat,
     type (===),
   )
 import qualified Data.Type.Natural as TN
@@ -281,7 +280,7 @@ newtype Machine (ps :: [Plugin]) (keys :: [StoreKey]) a = Machine {unMachine :: 
     , MonadReader (Store keys)
     )
 
-class IsPlugin (p :: Plugin) where
+class Show (PluginOutput p) => IsPlugin (p :: Plugin) where
   data PluginOutput p
   type Runnable p (keys :: [StoreKey]) :: Constraint
   process :: Runnable p keys => proxy p -> Store keys -> PluginOutput p
@@ -391,3 +390,56 @@ instance DynamicPlugin 'PluginGreet where
      in withKnown (sLookupIndex (SPluginStore SPluginGreet) keys) $
           withKnown (sLookupIndex SNameStore keys) $
             Right act
+
+data SomeSing k where
+  MkSomeSing :: Sing (a :: k) -> SomeSing k
+
+data SomeSingSuchThat c where
+  MkSomeSingSuchThat :: c a => Sing a -> SomeSingSuchThat c
+
+data SomeDSum c f where
+  MkSomeDSum :: c x => Sing x -> f x -> SomeDSum c f
+
+class Promotable k where
+  promote :: k -> SomeSing k
+
+data SomeRecord c f where
+  MkSomeRecord ::
+    All c keys =>
+    Sing keys ->
+    Record f keys ->
+    SomeRecord c f
+
+fromSomeDSums ::
+  [SomeDSum c f] -> SomeRecord c f
+fromSomeDSums [] = MkSomeRecord SNil EmptyStore
+fromSomeDSums (MkSomeDSum sx v : rest) =
+  case fromSomeDSums rest of
+    MkSomeRecord sxs vs -> MkSomeRecord (sx `SCons` sxs) (v :< vs)
+
+instance Promotable Plugin where
+  promote = \case
+    PluginDouble -> MkSomeSing SPluginDouble
+    PluginGreet -> MkSomeSing SPluginGreet
+
+data SomeDynamicPlugin where
+  MkDyn :: DynamicPlugin p => Sing p -> SomeDynamicPlugin
+
+data PluginsOn keys where
+  MkSomePlugins :: All (RunsWith keys) ps => SPlugins ps -> PluginsOn keys
+
+toSomeDyns :: forall keys. Known keys => [SomeDynamicPlugin] -> Either String (PluginsOn keys)
+toSomeDyns [] = pure $ MkSomePlugins SNil
+toSomeDyns (MkDyn (p :: SPlugin p) : rest) = do
+  MkSomePlugins ps <- toSomeDyns @keys rest
+  deferDynamicPlugin @p @keys Proxy Proxy (MkSomePlugins $ SCons p ps)
+
+runDynamicPlugins ::
+  forall keys.
+  Known keys =>
+  Store keys ->
+  [SomeDynamicPlugin] ->
+  Either String (SomeRecord (RunsWith keys) PluginOutput)
+runDynamicPlugins store ps = do
+  MkSomePlugins (sps :: SPlugins ps) <- toSomeDyns @keys ps
+  pure $ MkSomeRecord sps $ processStore store sps
