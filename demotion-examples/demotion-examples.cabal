@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 35c5291c61c49c7aa2358f38f7825a5182d944bdeb7478c7e95f26a82bf6a890
+-- hash: f4f29667fd12cfa836ce30d327f89e9354eed825dc20035509ece450b85b5e2c
 
 name:           demotion-examples
 version:        0.1.0.0
@@ -29,6 +29,7 @@ library
   exposed-modules:
       Data.Type.Nat.GCD
       Data.Type.PluginMachine
+      Data.Type.Singletons
   other-modules:
       Paths_demotion_examples
   hs-source-dirs:

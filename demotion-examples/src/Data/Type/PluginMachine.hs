@@ -24,20 +24,14 @@
 
 module Data.Type.PluginMachine where
 
-import Control.Monad.Reader.Class (MonadReader)
-import Control.Monad.Trans.Reader (Reader)
 import Data.Kind (Constraint, Type)
 import Data.Proxy (Proxy (..))
 import Data.Type.Natural
   ( Equality (Equal, NonEqual),
-    SBool (SFalse, STrue),
-    SNat,
-    SOrdering (SEQ, SGT, SLT),
-    sNat,
     toNatural,
     type (===),
   )
-import qualified Data.Type.Natural as TN
+import Data.Type.Singletons
 import GHC.TypeLits
 import Numeric.Natural (Natural)
 import Type.Reflection (Typeable)
@@ -92,51 +86,9 @@ instance SEqual StoreKey where
       NonEqual -> unsafeCoerce $ NonEqual @0 @1
   SPluginStore {} %~ _ = unsafeCoerce $ NonEqual @0 @1
 
-type family Sing :: k -> Type
-
 type instance Sing = SStoreKey
 
 type instance Sing = SPlugin
-
-type instance Sing = SNat
-
-type instance Sing = SList
-
-data SList (xs :: [k]) where
-  SNil :: SList '[]
-  SCons :: Sing x -> SList xs -> SList (x ': xs)
-
-data SMaybe (m :: Maybe k) where
-  SNothing :: SMaybe 'Nothing
-  SJust :: Sing a -> SMaybe ( 'Just a)
-
-instance Known 'Nothing where
-  sing = SNothing
-
-instance Known k => Known ( 'Just k) where
-  sing = SJust sing
-
-instance SEqual k => SEqual (Maybe k) where
-  SNothing %~ SNothing = Equal
-  SJust l %~ SJust r = case l %~ r of
-    Equal -> Equal
-    NonEqual -> unsafeCoerce $ NonEqual @0 @1
-  SNothing %~ SJust {} = unsafeCoerce $ NonEqual @0 @1
-  SJust {} %~ SNothing = unsafeCoerce $ NonEqual @0 @1
-
-type instance Sing = SMaybe
-
-class Known a where
-  sing :: Sing a
-
-instance KnownNat n => Known n where
-  sing = sNat
-
-instance Known '[] where
-  sing = SNil
-
-instance (Known x, Known xs) => Known (x ': xs) where
-  sing = sing `SCons` sing
 
 instance Known 'PluginDouble where
   sing = SPluginDouble
@@ -198,43 +150,6 @@ type family LookupIndex k ks where
   LookupIndex _ '[] = 'Nothing
   LookupIndex k (k' ': ks) = LookupIndexAux (k === k') k k' ks
 
-type instance Sing = SBool
-
-type instance Sing = SOrdering
-
-class SEqual k where
-  (%~) :: Sing (a :: k) -> Sing b -> Equality a b
-
-instance SEqual Nat where
-  (%~) = (TN.%~)
-
-instance SEqual Bool where
-  STrue %~ STrue = Equal
-  SFalse %~ SFalse = Equal
-  STrue %~ SFalse = NonEqual
-  SFalse %~ STrue = NonEqual
-
-instance SEqual Ordering where
-  SLT %~ SLT = Equal
-  SGT %~ SGT = Equal
-  SEQ %~ SEQ = Equal
-  _ %~ _ = unsafeCoerce $ NonEqual @0 @1
-
-instance Known 'True where
-  sing = STrue
-
-instance Known 'False where
-  sing = SFalse
-
-instance Known 'LT where
-  sing = SLT
-
-instance Known 'GT where
-  sing = SGT
-
-instance Known 'EQ where
-  sing = SEQ
-
 walkPath' :: Path k ks -> Record f ks -> f k
 walkPath' Here (v :< _) = v
 walkPath' (There trail) (_ :< rest) = walkPath' trail rest
@@ -271,14 +186,6 @@ type family FromJust msg mb where
   FromJust _ ( 'Just x) = x
 
 type Member k ks = Known (LookupIndex' k ks)
-
-newtype Machine (ps :: [Plugin]) (keys :: [StoreKey]) a = Machine {unMachine :: Reader (Store keys) a}
-  deriving newtype
-    ( Functor
-    , Applicative
-    , Monad
-    , MonadReader (Store keys)
-    )
 
 class Show (PluginOutput p) => IsPlugin (p :: Plugin) where
   data PluginOutput p
