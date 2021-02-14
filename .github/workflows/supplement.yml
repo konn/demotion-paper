@@ -15,6 +15,7 @@ on:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   gen-source:
+    name: Generate supplement.tex
     runs-on: ubuntu-18.04
     env: 
       STACK_ROOT: "${{ github.workspace }}/.stack-root"
@@ -49,6 +50,7 @@ jobs:
         retention-days: 90
 
   typeset:
+    name: Typeset Supplementary PDF
     needs:
     - gen-source
     runs-on:  ubuntu-18.04
@@ -72,12 +74,7 @@ jobs:
       - name: Install pygments
         run: |
           apt-get update && apt-get install -y python3-pygments
-      - name: Typeset it
-        run: |
-          cd ${GITHUB_WORKSPACE}/${WORKDIR}
-          ls
-          latexmk -pdflua ${JOBNAME}.tex
-      
+
       - name: Download a Generated supplements
         uses: actions/download-artifact@v2.0.7
         with:
@@ -86,6 +83,11 @@ jobs:
           # Destination path
           path: .
 
+      - name: Typeset it
+        run: |
+          cp demotion-paper/.latexmkrc .
+          latexmk -pdflua supplement.tex
+      
       - name: Upload a Supplement PDF
         uses: actions/upload-artifact@v2.2.1
         with:
