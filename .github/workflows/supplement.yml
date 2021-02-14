@@ -46,6 +46,8 @@ jobs:
         retention-days: 90
 
   typeset:
+    needs:
+    - gen-source
     runs-on:  ubuntu-18.04
     container: docker://konn/texlive2020-slim:20201227.4
 
