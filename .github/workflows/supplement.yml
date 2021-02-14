@@ -16,6 +16,8 @@ on:
 jobs:
   gen-source:
     runs-on: ubuntu-18.04
+    env: 
+      STACK_ROOT: "$GITHUB_WORKSPACE/.stack-root"
     steps:
     - uses: actions/checkout@v2
     - name: Cache .stack-work
@@ -23,6 +25,7 @@ jobs:
       with: 
         path: |
           gen-supplement/.stack-work
+          $GITHUB_WORKSPACE/.stack-root
         key: gensupplement-${{github.ref}}-${{ hashFiles('gen-supplement/**.hs') }}-${{ hashFiles('gen-supplement/**.hs') }}-${{ hashFiles('demotion-examples/**/*') }}
         restore-keys: |
             gensupplement-${{github.ref}}-${{ hashFiles('gen-supplement/**.hs') }}-
@@ -32,7 +35,7 @@ jobs:
       uses: haskell/actions/setup@v1.2
       with:
         enable-stack: true
-        ghc-version: '8.10.3'
+        stack-no-global: true
     - name: Generate supplement.tex
       run: |
         cd gen-supplement
