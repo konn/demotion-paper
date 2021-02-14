@@ -116,28 +116,20 @@ data Record f keys where
   EmptyStore :: Record f '[]
   (:<) :: f k -> Record f ks -> Record f (k ': ks)
 
-type family All c keys :: Constraint where
-  All c '[] = ()
-  All c (k ': ks) = (c k, All c ks)
-
-class Show (f a) => ShowF f a
-
-instance Show (f a) => ShowF f a
-
 deriving instance All (ShowF f) keys => Show (Record f keys)
 
 infixr 9 :<
 
-data Path k ks where
-  Here :: Path k (k ': ks)
-  There :: Path k ks -> Path k (k' ': ks)
+data Index k ks where
+  Here :: Index k (k ': ks)
+  There :: Index k ks -> Index k (k' ': ks)
 
-type SPath :: forall k ks. Path k ks -> Type
-data SPath path where
-  SHere :: SPath 'Here
-  SThere :: SPath pth -> SPath ( 'There pth)
+type SIndex :: forall k ks. Index k ks -> Type
+data SIndex index where
+  SHere :: SIndex 'Here
+  SThere :: SIndex index -> SIndex ( 'There index)
 
-type instance Sing = SPath
+type instance Sing = SIndex
 
 instance Known 'Here where
   sing = SHere
@@ -145,23 +137,23 @@ instance Known 'Here where
 instance Known k => Known ( 'There k) where
   sing = SThere sing
 
-type LookupIndex :: forall k ks -> Maybe (Path k ks)
+type LookupIndex :: forall k ks -> Maybe (Index k ks)
 type family LookupIndex k ks where
   LookupIndex _ '[] = 'Nothing
   LookupIndex k (k' ': ks) = LookupIndexAux (k === k') k k' ks
 
-walkPath' :: Path k ks -> Record f ks -> f k
-walkPath' Here (v :< _) = v
-walkPath' (There trail) (_ :< rest) = walkPath' trail rest
+walkIndex' :: Index k ks -> Record f ks -> f k
+walkIndex' Here (v :< _) = v
+walkIndex' (There trail) (_ :< rest) = walkIndex' trail rest
 
-walkPath :: Path k ks -> Store ks -> StoreVal k
-walkPath = fmap storeEntry . walkPath'
+walkIndex :: Index k ks -> Store ks -> StoreVal k
+walkIndex = fmap storeEntry . walkIndex'
 
 -- >>> :kind! LookupIndex 5 '[24, 45, 1, 5]
--- LookupIndex 5 '[24, 45, 1, 5] :: Maybe (Path 5 '[24, 45, 1, 5])
+-- LookupIndex 5 '[24, 45, 1, 5] :: Maybe (Index 5 '[24, 45, 1, 5])
 -- = 'Just ('There ('There ('There 'Here)))
 
-type LookupIndexAux :: Bool -> forall k k' ks -> Maybe (Path k (k' ': ks))
+type LookupIndexAux :: Bool -> forall k k' ks -> Maybe (Index k (k' ': ks))
 type family LookupIndexAux eql k k' rest where
   LookupIndexAux 'True k k ks = 'Just 'Here
   LookupIndexAux 'False k _ ks = 'There `FMap` LookupIndex k ks
@@ -170,9 +162,9 @@ type family FMap (f :: k -> k') (n :: Maybe k) :: Maybe k' where
   FMap _ 'Nothing = 'Nothing
   FMap f ( 'Just a) = 'Just (f a)
 
-demotePath :: SPath (path :: Path k ks) -> Path k ks
-demotePath SHere = Here
-demotePath (SThere pth) = There $ demotePath pth
+demoteIndex :: SIndex (index :: Index k ks) -> Index k ks
+demoteIndex SHere = Here
+demoteIndex (SThere pth) = There $ demoteIndex pth
 
 type LookupIndex' k ks =
   FromJust
@@ -199,7 +191,7 @@ instance IsPlugin 'PluginDouble where
   process _ store = OutputA $ 2 * readStore @ 'IntStore store
 
 readStore :: forall key keys. Member key keys => Store keys -> StoreVal key
-readStore = walkPath $ demotePath $ sing @(LookupIndex' key keys)
+readStore = walkIndex $ demoteIndex $ sing @(LookupIndex' key keys)
 
 class (IsPlugin p, Runnable p keys) => RunsWith keys p
 
@@ -234,12 +226,12 @@ instance IsPlugin 'PluginGreet where
   process _ (store :: Store keys) =
     case sing @(LookupIndex ( 'PluginStore 'PluginGreet) keys) of
       SJust pth ->
-        GreetOutput $ makeGreet $ walkPath (demotePath pth) store
+        GreetOutput $ makeGreet $ walkIndex (demoteIndex pth) store
       SNothing -> case sing @(LookupIndex 'NameStore keys) of
         SJust pth ->
           GreetOutput $
             makeGreet $
-              GreetEnv (walkPath (demotePath pth) store) 1 "PluginGreet"
+              GreetEnv (walkIndex (demoteIndex pth) store) 1 "PluginGreet"
         SNothing -> GreetOutput "I don't know who you are, anyway, Hi!"
 
 type SPlugins ps = SList (ps :: [Plugin])
@@ -255,11 +247,6 @@ processStore store (SCons p ps) = process p store :< processStore store ps
 
 -- >>> runMachine (MkStoreEntry @NameStore "Superman" :< MkStoreEntry @IntStore 42 :< EmptyStore) :: Outputs '[PluginDouble, PluginGreet]
 -- OutputA 84 :< (GreetOutput "Hi, Superman, from PluginGreet!" :< EmptyStore)
-
-newtype WithKnown a r = WithKnown {runWithKnown :: Known a => r}
-
-withKnown :: forall a r. Sing a -> (Known a => r) -> r
-withKnown sn act = unsafeCoerce (WithKnown @a @r act) sn
 
 sJustNat :: forall m. Known (m :: Maybe Nat) => Maybe Natural
 sJustNat = demoteJustNat @m
@@ -298,17 +285,8 @@ instance DynamicPlugin 'PluginGreet where
           withKnown (sLookupIndex SNameStore keys) $
             Right act
 
-data SomeSing k where
-  MkSomeSing :: Sing (a :: k) -> SomeSing k
-
-data SomeSingSuchThat c where
-  MkSomeSingSuchThat :: c a => Sing a -> SomeSingSuchThat c
-
 data SomeDSum c f where
   MkSomeDSum :: c x => Sing x -> f x -> SomeDSum c f
-
-class Promotable k where
-  promote :: k -> SomeSing k
 
 data SomeRecord c f where
   MkSomeRecord ::
