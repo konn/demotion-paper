@@ -529,5 +529,11 @@
     "**/*.tex", "**/*.hs", "**/*.md"
   ],
   "todo.embedded.provider": "ag",
-  "todo.embedded.providers.ag.regex": "(?:%|#|// @|//|/\\*+|<!--|--|\\* @|\\{!|\\{\\{!--|\\{\\{!) *(TODO|FIXME|FIX|BUG|UGLY|HACK|NOTE|IDEA|REVIEW|DEBUG|OPTIMIZE)"
+  "todo.embedded.providers.ag.regex": "(?:%|#|// @|//|/\\*+|<!--|--|\\* @|\\{!|\\{\\{!--|\\{\\{!) *(TODO|FIXME|FIX|BUG|UGLY|HACK|NOTE|IDEA|REVIEW|DEBUG|OPTIMIZE)",
+  "grammarly.audience": "expert",
+  "grammarly.dialect": "british",
+  "grammarly.domain": "technical",
+  "grammarly.goals": [
+  "tellStory"
+  ]
 }
