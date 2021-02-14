@@ -2,6 +2,7 @@
 \documentclass[demotion-paper.tex]{subfiles}
 \begin{document}
 \section{Toy Example: Demoting Type-level GCD}
+\label{sec:gcd}
 Let's begin with a simple example of type-level greatest common divisors (GCDs).
 It is quite simple as all we have to do is just to implement Euclidean algorithm:
 
@@ -176,7 +177,7 @@ sa %=== sb = case testEquality sa sb of
 \end{code}
 
 This use of \hask{unsafeCoerce} is inherently inevitable.
-Fortunately, provided that \hask{TestEquality} instance is implemented soundly, this use of \hask{unsafeCoerce} is not cursed: this is just postulating an axiom that is true but there is no way to tell it to the compiler safely\footnote{Of course, one must pay attension whether coerced values have the same representation. In this case, however, it is legitimate useage as coercion arguments has no runtime representation and {\hask{NonEqual}} and {\hask{Equal}} can be treated just as nullary constructors and hence we can treat type parameters {\hask{a}} and {\hask{b}} in {\hask{Equality a b}} as if they are phantom.}.
+Fortunately, provided that \hask{TestEquality} instance is implemented soundly, this use of \hask{unsafeCoerce} is not cursed: this is just postulating an axiom that is true but there is no way to tell it to the compiler safely\footnote{Of course, one must pay attension whether coerced values have the same representation. In this case, it is legitimate useage.}.
 If one wants to construct evidence of type-level (non-)equality solely from the expression, we must assume some axiom and introduce it by \hask{unsafeCoerce}.
 This is how the library builder usually do when they implement basic (expression-level) operators to manipulate type-level values.
 Such ``trust me'' axioms can be found, for example, in \hask{TestEquality TypeRep} instance in \texttt{base}, and various \hask{SEq} instances in \texttt{singletons}~\cite{singletons} package.
