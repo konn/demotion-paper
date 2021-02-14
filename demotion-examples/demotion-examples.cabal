@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f4f29667fd12cfa836ce30d327f89e9354eed825dc20035509ece450b85b5e2c
+-- hash: d66c9b569fe458b3978cd0c56ae38365cf3603fee8150b0cf5c9f1600668db7b
 
 name:           demotion-examples
 version:        0.1.0.0
@@ -28,6 +28,7 @@ source-repository head
 library
   exposed-modules:
       Data.Type.Nat.GCD
+      Data.Type.Path
       Data.Type.PluginMachine
       Data.Type.Singletons
   other-modules:
@@ -39,6 +40,7 @@ library
       base >=4.7 && <5
     , ghc-typelits-presburger
     , mtl
+    , these
     , transformers
     , type-natural
   default-language: Haskell2010
@@ -56,6 +58,7 @@ test-suite demotion-examples-test
     , demotion-examples
     , ghc-typelits-presburger
     , mtl
+    , these
     , transformers
     , type-natural
   default-language: Haskell2010

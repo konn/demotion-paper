@@ -27,6 +27,7 @@ dependencies:
 - ghc-typelits-presburger
 - transformers
 - mtl
+- these
 
 library:
   source-dirs: src

@@ -37,14 +37,12 @@ import Numeric.Natural (Natural)
 import Type.Reflection (Typeable)
 import Unsafe.Coerce (unsafeCoerce)
 
-data Plugin = PluginDouble | PluginGreet
+data Plugin = Doubler | Greeter
   deriving (Read, Show, Eq, Ord, Typeable)
 
 data SPlugin (p :: Plugin) where
-  SPluginDouble :: SPlugin 'PluginDouble
-  SPluginGreet :: SPlugin 'PluginGreet
-
-data family PluginStoreType (p :: Plugin)
+  SDoubler :: SPlugin 'Doubler
+  SGreeter :: SPlugin 'Greeter
 
 data StoreKey
   = IntStore
@@ -68,10 +66,10 @@ data SStoreKey (key :: StoreKey) where
   SGlobalStore :: SStoreKey 'GlobalStore
 
 instance SEqual Plugin where
-  SPluginDouble %~ SPluginDouble = Equal
-  SPluginDouble %~ _ = unsafeCoerce $ NonEqual @0 @1
-  SPluginGreet %~ SPluginGreet = Equal
-  SPluginGreet %~ _ = unsafeCoerce $ NonEqual @0 @1
+  SDoubler %~ SDoubler = Equal
+  SDoubler %~ _ = unsafeCoerce $ NonEqual @0 @1
+  SGreeter %~ SGreeter = Equal
+  SGreeter %~ _ = unsafeCoerce $ NonEqual @0 @1
 
 instance SEqual StoreKey where
   SIntStore %~ SIntStore = Equal
@@ -90,11 +88,11 @@ type instance Sing = SStoreKey
 
 type instance Sing = SPlugin
 
-instance Known 'PluginDouble where
-  sing = SPluginDouble
+instance Known 'Doubler where
+  sing = SDoubler
 
-instance Known 'PluginGreet where
-  sing = SPluginGreet
+instance Known 'Greeter where
+  sing = SGreeter
 
 instance Known 'IntStore where
   sing = SIntStore
@@ -158,10 +156,6 @@ type family LookupIndexAux eql k k' rest where
   LookupIndexAux 'True k k ks = 'Just 'Here
   LookupIndexAux 'False k _ ks = 'There `FMap` LookupIndex k ks
 
-type family FMap (f :: k -> k') (n :: Maybe k) :: Maybe k' where
-  FMap _ 'Nothing = 'Nothing
-  FMap f ( 'Just a) = 'Just (f a)
-
 demoteIndex :: SIndex (index :: Index k ks) -> Index k ks
 demoteIndex SHere = Here
 demoteIndex (SThere pth) = There $ demoteIndex pth
@@ -173,25 +167,24 @@ type LookupIndex' k ks =
     )
     (LookupIndex k ks)
 
-type family FromJust msg mb where
-  FromJust err 'Nothing = TypeError err
-  FromJust _ ( 'Just x) = x
-
 type Member k ks = Known (LookupIndex' k ks)
 
 class Show (PluginOutput p) => IsPlugin (p :: Plugin) where
+  data PluginStoreType p
   data PluginOutput p
   type Runnable p (keys :: [StoreKey]) :: Constraint
   process :: Runnable p keys => proxy p -> Store keys -> PluginOutput p
 
-instance IsPlugin 'PluginDouble where
-  newtype PluginOutput 'PluginDouble = OutputA Int
+instance IsPlugin 'Doubler where
+  data PluginStoreType 'Doubler = DoubleStore
     deriving (Read, Show, Eq, Ord)
-  type Runnable 'PluginDouble keys = Member 'IntStore keys
-  process _ store = OutputA $ 2 * readStore @ 'IntStore store
+  newtype PluginOutput 'Doubler = OutputA Int
+    deriving (Read, Show, Eq, Ord)
+  type Runnable 'Doubler keys = Member 'IntStore keys
+  process _ store = OutputA $ 2 * getRecField @ 'IntStore store
 
-readStore :: forall key keys. Member key keys => Store keys -> StoreVal key
-readStore = walkIndex $ demoteIndex $ sing @(LookupIndex' key keys)
+getRecField :: forall key keys. Member key keys => Store keys -> StoreVal key
+getRecField = walkIndex $ demoteIndex $ sing @(LookupIndex' key keys)
 
 class (IsPlugin p, Runnable p keys) => RunsWith keys p
 
@@ -199,19 +192,16 @@ instance (IsPlugin p, Runnable p keys) => RunsWith keys p
 
 type Outputs = Record PluginOutput
 
-data instance PluginStoreType 'PluginGreet = GreetEnv
-  { greetTarget :: String
-  , greetTimes :: Int
-  , greetOwner :: String
-  }
-  deriving (Show, Eq, Ord)
-
 type Greetable keys =
-  ( Known (LookupIndex ( 'PluginStore 'PluginGreet) keys)
-  , Known (LookupIndex 'NameStore keys)
+  ( Known (LookupIndex ( 'PluginStore 'Greeter) keys)
+  , Greetable_ (LookupIndex ( 'PluginStore 'Greeter) keys) keys
   )
 
-makeGreet :: PluginStoreType 'PluginGreet -> String
+type family Greetable_ m keys :: Constraint where
+  Greetable_ ( 'Just path) _ = ()
+  Greetable_ 'Nothing keys = Known (LookupIndex 'NameStore keys)
+
+makeGreet :: PluginStoreType 'Greeter -> String
 makeGreet GreetEnv {..} =
   mconcat (replicate greetTimes "Hi, ")
     <> greetTarget
@@ -219,19 +209,26 @@ makeGreet GreetEnv {..} =
     <> greetOwner
     <> "!"
 
-instance IsPlugin 'PluginGreet where
-  type Runnable 'PluginGreet keys = Greetable keys
-  newtype PluginOutput 'PluginGreet = GreetOutput String
+instance IsPlugin 'Greeter where
+  data PluginStoreType 'Greeter = GreetEnv
+    { greetTarget :: String
+    , greetTimes :: Int
+    , greetOwner :: String
+    }
+    deriving (Show, Eq, Ord)
+  type Runnable 'Greeter keys = Greetable keys
+  newtype PluginOutput 'Greeter = GreetOutput String
     deriving (Read, Show, Eq, Ord)
   process _ (store :: Store keys) =
-    case sing @(LookupIndex ( 'PluginStore 'PluginGreet) keys) of
+    case sing @(LookupIndex ( 'PluginStore 'Greeter) keys) of
       SJust pth ->
-        GreetOutput $ makeGreet $ walkIndex (demoteIndex pth) store
+        withKnown pth $
+          GreetOutput $ makeGreet $ walkIndex (demoteIndex pth) store
       SNothing -> case sing @(LookupIndex 'NameStore keys) of
         SJust pth ->
           GreetOutput $
             makeGreet $
-              GreetEnv (walkIndex (demoteIndex pth) store) 1 "PluginGreet"
+              GreetEnv (walkIndex (demoteIndex pth) store) 1 "Greeter"
         SNothing -> GreetOutput "I don't know who you are, anyway, Hi!"
 
 type SPlugins ps = SList (ps :: [Plugin])
@@ -245,8 +242,8 @@ processStore ::
 processStore _ SNil = EmptyStore
 processStore store (SCons p ps) = process p store :< processStore store ps
 
--- >>> runMachine (MkStoreEntry @NameStore "Superman" :< MkStoreEntry @IntStore 42 :< EmptyStore) :: Outputs '[PluginDouble, PluginGreet]
--- OutputA 84 :< (GreetOutput "Hi, Superman, from PluginGreet!" :< EmptyStore)
+-- >>> runMachine (MkStoreEntry @NameStore "Superman" :< MkStoreEntry @IntStore 42 :< EmptyStore) :: Outputs '[Doubler, Greeter]
+-- OutputA 84 :< (GreetOutput "Hi, Superman, from Greeter!" :< EmptyStore)
 
 sJustNat :: forall m. Known (m :: Maybe Nat) => Maybe Natural
 sJustNat = demoteJustNat @m
@@ -255,10 +252,6 @@ demoteJustNat :: forall m. Known (m :: Maybe Nat) => Maybe Natural
 demoteJustNat = case sing @m of
   SNothing -> Nothing
   SJust n -> Just $ toNatural n
-
-sFMap :: (forall x. Sing x -> Sing (f x)) -> SMaybe may -> SMaybe (FMap f may)
-sFMap _ SNothing = SNothing
-sFMap f (SJust x) = SJust (f x)
 
 sLookupIndex ::
   SEqual a => Sing (k :: a) -> SList keys -> SMaybe (LookupIndex k keys)
@@ -272,18 +265,20 @@ class IsPlugin p => DynamicPlugin p where
   deferDynamicPlugin ::
     Known keys => pxy p -> Proxy keys -> (Runnable p keys => r) -> Either String r
 
-instance DynamicPlugin 'PluginDouble where
+instance DynamicPlugin 'Doubler where
   deferDynamicPlugin _ (_ :: Proxy keys) act =
     case sLookupIndex SIntStore $ sing @keys of
-      SNothing -> Left "PluginDouble requries IntStore key"
+      SNothing -> Left "Doubler requries IntStore key"
       SJust v -> withKnown v $ Right act
 
-instance DynamicPlugin 'PluginGreet where
+instance DynamicPlugin 'Greeter where
   deferDynamicPlugin _ (_ :: Proxy keys) act =
     let keys = sing @keys
-     in withKnown (sLookupIndex (SPluginStore SPluginGreet) keys) $
-          withKnown (sLookupIndex SNameStore keys) $
-            Right act
+     in case sLookupIndex (SPluginStore SGreeter) keys of
+          SJust pth -> withKnown pth $ Right act
+          SNothing ->
+            withKnown (sLookupIndex SNameStore keys) $
+              Right act
 
 data SomeDSum c f where
   MkSomeDSum :: c x => Sing x -> f x -> SomeDSum c f
@@ -301,11 +296,6 @@ fromSomeDSums [] = MkSomeRecord SNil EmptyStore
 fromSomeDSums (MkSomeDSum sx v : rest) =
   case fromSomeDSums rest of
     MkSomeRecord sxs vs -> MkSomeRecord (sx `SCons` sxs) (v :< vs)
-
-instance Promotable Plugin where
-  promote = \case
-    PluginDouble -> MkSomeSing SPluginDouble
-    PluginGreet -> MkSomeSing SPluginGreet
 
 data SomeDynamicPlugin where
   MkDyn :: DynamicPlugin p => Sing p -> SomeDynamicPlugin

@@ -12,11 +12,14 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
+{-# OPTIONS_GHC -Wno-unused-imports #-}
 
 module Data.Type.Singletons
   ( SEqual (..),
     Sing,
     SomeSing (..),
+    FromJust,
+    withPromoted,
     SomeSingSuchThat (..),
     Known (..),
     withKnown,
@@ -24,11 +27,16 @@ module Data.Type.Singletons
     SMaybe (..),
     SOrdering (..),
     SBool (..),
-    Promotable (..),
+    HasSing (..),
     All,
     ShowF (),
     trustMeNonEqual,
     unsafeTrustMeNonEqual,
+    SEither (..),
+    FMap,
+    sFMap,
+    type (<|>),
+    LiftMaybe2,
   )
 where
 
@@ -42,9 +50,12 @@ import Data.Type.Natural
     SNat,
     SOrdering (..),
     sNat,
+    withSNat,
     type (===),
   )
 import qualified Data.Type.Natural as TN
+import GHC.Natural (Natural)
+import GHC.TypeLits (TypeError)
 import Unsafe.Coerce (unsafeCoerce)
 
 type family Sing :: k -> Type
@@ -133,8 +144,11 @@ newtype WithKnown a r = WithKnown (Known a => r)
 withKnown :: forall a r. Sing a -> (Known a => r) -> r
 withKnown sn act = unsafeCoerce (WithKnown @a @r act) sn
 
-class Promotable k where
-  promote :: k -> SomeSing k
+class HasSing k where
+  type Demoted k
+  type Demoted k = k
+  promote :: Demoted k -> SomeSing k
+  demote :: Sing (a :: k) -> Demoted k
 
 data SomeSing k where
   MkSomeSing :: Sing (a :: k) -> SomeSing k
@@ -155,3 +169,75 @@ trustMeNonEqual = unsafeCoerce $ NonEqual @0 @1
 
 unsafeTrustMeNonEqual :: Equality a b
 unsafeTrustMeNonEqual = unsafeCoerce $ NonEqual @0 @1
+
+data SEither (eith :: Either l r) where
+  SLeft :: Sing a -> SEither ( 'Left a)
+  SRight :: Sing b -> SEither ( 'Right b)
+
+type instance Sing = SEither
+
+instance Known a => Known ( 'Left a) where
+  sing = SLeft sing
+
+instance Known a => Known ( 'Right a) where
+  sing = SRight sing
+
+sFMap :: (forall x. Sing x -> Sing (f x)) -> SMaybe may -> SMaybe (FMap f may)
+sFMap _ SNothing = SNothing
+sFMap f (SJust x) = SJust (f x)
+
+type family FMap (f :: k -> k') (n :: Maybe k) :: Maybe k' where
+  FMap _ 'Nothing = 'Nothing
+  FMap f ( 'Just a) = 'Just (f a)
+
+type family ma <|> mb where
+  'Nothing <|> a = a
+  'Just a <|> _ = 'Just a
+
+infixl 3 <|>
+
+type family LiftMaybe2 f ma mb where
+  LiftMaybe2 _ 'Nothing _ = 'Nothing
+  LiftMaybe2 _ _ 'Nothing = 'Nothing
+  LiftMaybe2 f ( 'Just a) ( 'Just b) = 'Just (f a b)
+
+withPromoted ::
+  forall k r.
+  HasSing k =>
+  Demoted k ->
+  (forall x. Sing (x :: k) -> r) ->
+  r
+withPromoted a f = case promote @k a of
+  MkSomeSing sx -> f sx
+
+instance HasSing a => HasSing [a] where
+  type Demoted [a] = [Demoted a]
+  promote [] = MkSomeSing SNil
+  promote (x : xs) = withPromoted x $ \sx -> withPromoted xs $ \sxs ->
+    MkSomeSing $ sx `SCons` sxs
+  demote SNil = []
+  demote (sx `SCons` sxs) = demote sx : demote sxs
+
+instance HasSing k => HasSing (Maybe k) where
+  type Demoted (Maybe k) = Maybe (Demoted k)
+  promote Nothing = MkSomeSing SNothing
+  promote (Just a) = case promote a of
+    MkSomeSing sa -> MkSomeSing (SJust sa)
+  demote SNothing = Nothing
+  demote (SJust a) = Just $ demote a
+
+instance (HasSing l, HasSing r) => HasSing (Either l r) where
+  type Demoted (Either l r) = Either (Demoted l) (Demoted r)
+  promote (Left l) = withPromoted l $ MkSomeSing . SLeft
+  promote (Right r) = withPromoted r $ MkSomeSing . SRight
+  demote (SLeft l) = Left $ demote l
+  demote (SRight r) = Right $ demote r
+
+instance HasSing Nat where
+  type Demoted Nat = Natural
+  promote n = withSNat n MkSomeSing
+  demote = TN.toNatural
+
+type family FromJust msg mb where
+  FromJust err 'Nothing = TypeError err
+  FromJust _ ( 'Just x) = x

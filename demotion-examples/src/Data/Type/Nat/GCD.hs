@@ -85,3 +85,6 @@ type family
     (f ==== g) && (x ==== y)
   EqAux 'IsSimple 'IsSimple a a = 'True
   EqAux _ _ _ _ = 'False
+
+-- >>> sGCD (sNat @12) (sNat @30)
+-- 6
