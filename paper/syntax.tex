@@ -7,7 +7,7 @@ mathescape,linenos,numbersep=5pt,frame=lines,framesep=2mm,%
 \newminted[repl]{haskell}{%
 mathescape,numbersep=5pt,frame=lines,framesep=2mm,%
 }
-
+\VerbatimFootnotes
 \DeclareTotalTCBox{\hask}{v}{%
-box align=base,verbatim,colback=lightgray,colframe=gray%
+tcbox raise base,box align=base,verbatim,colback=lightgray,colframe=gray%
 }{\mintinline[fontsize=\SMALL]{haskell}{#1}}
