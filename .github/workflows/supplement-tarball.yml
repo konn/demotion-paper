@@ -1,0 +1,34 @@
+# This is a basic workflow to help you get started with Actions
+
+name: Supplement
+
+on:
+  # Triggers the workflow on push or pull request events but only for the master branch
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  generate-tarball:
+    name: Generate supplement.tar.gz
+    runs-on: ubuntu-18.04
+    env: 
+      STACK_ROOT: "${{ github.workspace }}/.stack-root"
+    steps:
+    - uses: actions/checkout@v2
+    - name: Create tarball
+      run: |
+        mv demotion-examples supplement
+        tar czf supplement.tar.gz -C supplement/ .
+    - name: Upload Tarball
+      uses: actions/upload-artifact@v2.2.1
+      with:
+        name: "Supplement Tarball"
+        path: "supplement.tar.gz"
+        if-no-files-found: error # optional, defaule is warn
+        retention-days: 90
