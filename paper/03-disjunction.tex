@@ -3,4 +3,29 @@
 \begin{document}
 \section{Disjunctive Constraints}
 \label{sec:disj}
+It is sporadically complained that type-classes in Haskell lacks \emph{disjunction}, or \emph{logical-or} in its constraint language.
+As for general type-classes, excluding disjunction from the type-classes language is a rational design decision for several reasons.
+To name a few:
+\begin{enumerate}
+  \item Type-classes adopts open-world hypothesis: users can add new instances freely, so the result of the instance resolution can differ in context.
+  \label{item:openness}
+  \item The semantics is not clear when multiple disjunctive clauses can be satisfied simultaneously.
+  \label{item:arb-choice}
+\end{enumerate}
+In some cases, however, the above obstacles can be ignored, and in most cases, unrestricted disjunctions are unnecessary.
+For example, when one wants to switch implementations of instances based on particular shapes of a constructor, it is customary to use \hask{{-# OVERLAPPABLE #-}} or \hask{{-# INCOHERENT #-}} pragmas.
+But, in some cases, this makes instance resolution unpredictable and incoherent (as indicated by its name), and sometimes doesn't work well with advanced type hackery.
+
+In this section, we propose another way of emulating disjunctive constraints, applying the constructive point of view.
+First, we recall the ``meaning'' of disjunction $\varphi \vee \psi$ in BHK interpretation:
+\[
+  A: \varphi \vee \psi \iff A = \braket{i, B},\text{ where }
+  i = 0 \text{ and } B: \varphi, \text{ or }
+  i = 1 \text{ and } B: \psi
+\]
+That is, a ``witness'' $A$ of $\varphi \vee \psi$ is a tagged union of ``witnesses'' of $\varphi$ and $\psi$.
+
+It suggests that if constraints of interest can be expressed by or recovered from \emph{witnesses}, we can take their disjunction by choosing one of such witnesses.
+If such witnesses can be computed statically and deterministically, the obstacle \Cref{item:openness} is not a problem.
+Further, if users can explicitly \emph{manipulate} such witnesses concretely, we can control the selection strategy of disjunctive clauses, enabling us to resolve \Cref{item:arb-choice} manually.
 \end{document}
