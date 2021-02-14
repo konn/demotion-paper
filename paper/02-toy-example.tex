@@ -71,16 +71,16 @@ data (:~:) a b where
 \end{code}
 
 Thus, in the first two cases, the compiler can tell either \hask{n ~ 0} or \hask{m ~ 0}.
-Since the \hask{GCD} is defined as a closed type family, the compiler can match clauses in a top-down manner and successfully apply either of the first two clause of the definition of \hask{GCD} and type-checker passes.
+Since the \hask{GCD} is defined as a closed type family, the compiler can match clauses in a top-down manner and successfully apply either of the first two clauses of the definition of \hask{GCD} and type-checker passes.
 In other words, the constructor \hask{Refl} \emph{witnesses} the evaluation path of type-level function \hask{GCD}.
 
-In the last case, however, there is no additional type-level constraints available.
-Despite humans can still think ``all the \hask{Refl} clauses failed to match, hence the non-equal clause must apply here'', this intuition is not fully expressed in the type-level constraint!
+In the last case, however, no additional type-level constraint is available.
+Despite humans can still think ``as all the \hask{Refl} clauses failed to match, hence the non-equal clause must apply here'', this intuition is not fully expressed in the type-level constraint!
 
 So we have to give compiler some \emph{witness} to convince them.
-What kind of witness needed here?
-Well, we need to teach the compiler which clause of the type family definition used.
-In this case, branching of clause is caused by type-level equality: the evaluation path depends on whether \hask{n} or \hask{m} is \hask{0} or not.
+What kind of witness is needed here?
+Well, we need to teach the compiler which clause of the definition was actually used.
+In this case, branching is caused by type-level equality: the evaluation path depends on whether \hask{n} or \hask{m} is \hask{0} or not.
 First, let's make this intuition clear in the definition of \hask{GCD}:
 
 \begin{code}
@@ -136,11 +136,10 @@ type family a == b where
 \end{code}
 
 The complication of the first clause is intensional.
-As described in the documentation~\cite{GHC-Team:2021aa}, the intuition behind this is to let the compiler to infer, e.g.\ \hask{a == b} from \hask{Just a == Just b}.
-This is because any compound type matches only on the first clause.
+As described in the documentation~\cite{GHC-Team:2021aa}, the intuition behind this is to let the compiler to infer, e.g.\ \hask{Just a == Just b} from \hask{a == b}.
 
-This behaviour is desirable when one \emph{consumes} the constraint \hask{(a == b) ~ 'True}.
-But when one wants to \emph{produce} an evidence of \hask{(a == b) ~ 'True}, we cannot make use of the evidence given by \hask{Refl}.
+This behaviour is desirable when one \emph{produces} the constraints of forms \hask{(f a == g b) ~ 'True}.
+But when one wants to \emph{eliminate} an evidence of \hask{(a == b) ~ 'True}, we cannot make use of the evidence given by \hask{Refl}.
 This is, again, due to the lack of witness of the evaluation path: the compiler cannot determine which clause should be taken to compute \hask{a == b} if \hask{a} and \hask{b} are both opaque variable!
 
 A solution here is just to define another type family, which requires only bare equality:
@@ -150,6 +149,8 @@ type family a === b where
   _ === _ = 'False
 \end{code}
 
+Although this equality cannot treat equalities between compound types inductively, it suffices for \hask{GCD} case.
+We will revisit to a treatment of type-level equality in \Cref{sec:plugins}.
 Demoted version of this now gets:
 
 \begin{code}
@@ -161,7 +162,7 @@ sa %=== sb = case testEquality sa sb of
 
 Now, the type-error remains on the last clause: \hask{SFalse}.
 This is also due to the lack of witness of being distinct.
-But, wait! We are fighting until here to produce such a negative witness of non-equality, which in turn requires itself. A vicious cycle!
+But, wait! We are just struggling to produce such negative witnesses of non-equality, which in turn requires itself. A vicious cycle!
 
 At this very point, there is no other way than resorting to the ancient cursed spell: \hask{unsafeCoerce}:
 
@@ -175,9 +176,9 @@ sa %=== sb = case testEquality sa sb of
 \end{code}
 
 This use of \hask{unsafeCoerce} is inherently inevitable.
-Fortunately, provided that \hask{TestEquality} instance is implemented soundly, this use of \hask{unsafeCoerce} is not cursed: this is just postulating an axiom that is true but there is no way to tell it to the compiler safely\footnote{Of course, one must pay attension whether coerced values have the same representation. In this case it is completely legitimate use.}.
-If when wants to construct an evidence of type-level (non-)equality solely from the expression, we must assume some axiom and introduce it by \hask{unsafeCoerce}.
-This is how the library builder usually do when one implements basic (expression-level) operators to manipulate type-level values.
+Fortunately, provided that \hask{TestEquality} instance is implemented soundly, this use of \hask{unsafeCoerce} is not cursed: this is just postulating an axiom that is true but there is no way to tell it to the compiler safely\footnote{Of course, one must pay attension whether coerced values have the same representation. In this case, however, it is legitimate useage as coercion arguments has no runtime representation and {\hask{NonEqual}} and {\hask{Equal}} can be treated just as nullary constructors and hence we can treat type parameters {\hask{a}} and {\hask{b}} in {\hask{Equality a b}} as if they are phantom.}.
+If one wants to construct evidence of type-level (non-)equality solely from the expression, we must assume some axiom and introduce it by \hask{unsafeCoerce}.
+This is how the library builder usually do when they implement basic (expression-level) operators to manipulate type-level values.
 Such ``trust me'' axioms can be found, for example, in \hask{TestEquality TypeRep} instance in \texttt{base}, and various \hask{SEq} instances in \texttt{singletons}~\cite{singletons} package.
 
 Anyway, we are finally at the point of implementing working \hask{sGCD}, replacing every occurrence of \hask{(==)} with our custom \hask{(===)}:
@@ -198,5 +199,10 @@ sGCD sn sm = case (sn %=== sZero, sm %=== sZero) of
 \end{code}
 
 Finally, the compiler gets happy with all the definitions!
+We can confirm that the above \hask{sGCD} works just as expected:
+\begin{repl}
+>>> sGCD (sNat @12) (sNat @30)
+6
+\end{repl}
 
 \end{document}
