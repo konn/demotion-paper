@@ -85,7 +85,7 @@ jobs:
 
       - name: Typeset it
         run: |
-          cp demotion-paper/.latexmkrc .
+          cp paper/.latexmkrc .
           latexmk -pdflua supplement.tex
       
       - name: Upload a Supplement PDF
