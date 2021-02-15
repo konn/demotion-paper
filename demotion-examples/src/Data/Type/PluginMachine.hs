@@ -186,11 +186,11 @@ processStore ::
   Store keys ->
   SPlugins ps ->
   Outputs ps
-processStore _ SNil = EmptyStore
+processStore _ SNil = EmptyRecord
 processStore store (SCons p ps) = process p store :< processStore store ps
 
--- >>> processStore (MkStoreEntry @NameStore "Superman" :< MkStoreEntry @IntStore 42 :< EmptyStore) (sing @'[Doubler, Greeter])
--- OutputA 84 :< (GreetOutput "Hi, Superman, from Greeter!" :< EmptyStore)
+-- >>> processStore (MkStoreEntry @NameStore "Superman" :< MkStoreEntry @IntStore 42 :< EmptyRecord) (sing @'[Doubler, Greeter])
+-- OutputA 84 :< (GreetOutput "Hi, Superman, from Greeter!" :< EmptyRecord)
 
 class IsPlugin p => DynamicPlugin p where
   deferDynamicPlugin ::

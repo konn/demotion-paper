@@ -41,7 +41,7 @@ import Data.Type.Singletons
 import GHC.TypeLits
 
 data Record f keys where
-  EmptyStore :: Record f '[]
+  EmptyRecord :: Record f '[]
   (:<) :: f k -> Record f ks -> Record f (k ': ks)
 
 deriving instance All (ShowF f) keys => Show (Record f keys)
@@ -73,12 +73,12 @@ instance Known k => Known ( 'There k) where
 type FindIndex :: forall k ks -> Maybe (Index k ks)
 type family FindIndex k ks where
   FindIndex _ '[] = 'Nothing
-  FindIndex k (k' ': ks) = FindIndexAux (k === k') k k' ks
+  FindIndex k (k' ': ks) = FindIndexAux (k === k') k ks
 
-type FindIndexAux :: Bool -> forall k k' ks -> Maybe (Index k (k' ': ks))
-type family FindIndexAux eql k k' rest where
-  FindIndexAux 'True _ _ _ = 'Just 'Here
-  FindIndexAux 'False k _ ks = 'There `FMap` FindIndex k ks
+type FindIndexAux :: forall k'. Bool -> forall k ks -> Maybe (Index k (k' ': ks))
+type family FindIndexAux eql k rest where
+  FindIndexAux 'True _ _ = 'Just 'Here
+  FindIndexAux 'False k ks = 'There `FMap` FindIndex k ks
 
 walkIndex :: Index k ks -> Record f ks -> f k
 walkIndex Here (v :< _) = v
@@ -112,9 +112,24 @@ sFindIndex k (SCons k' ks) =
     Equal -> SJust SHere
     NonEqual -> sFMapMaybe SThere $ sFindIndex k ks
 
-getRecField :: forall key keys h. Given (Index key keys) => Record h keys -> h key
+getRecField :: forall key keys h. Member key keys => Record h keys -> h key
 getRecField = walkIndex given
 
+getRecField' :: forall key keys h. Known (FindIndex' key keys) => Record h keys -> h key
+getRecField' = walkIndex $ demote $ sing @(FindIndex' key keys)
+
+{-
+>>> getRecField' @Bool (EmptyRecord :: Record Maybe '[])
+Key `Bool' is absent in the list:
+'[]
+
+>>> getRecField' @Bool (Just 'a' :< Just True :< Nothing @() :< EmptyRecord)
+Just True
+-}
+
+{- | Serves as a default instance for @Member@.
+ Can be safely overriden by 'give' operator.
+-}
 instance Known (FindIndex' k ks) => Given (Index k ks) where
   given = demote $ sing @(FindIndex' k ks)
 
@@ -127,6 +142,7 @@ data UnionedRecord (h :: k -> Type) (ls :: [k]) (rs :: [k]) = UnionRec
   }
   deriving (Show)
 
+-- Just to avoid pollution by orphan @Given@ instance
 newtype IndexUnion k ls rs = WrapIndexUnion
   {getUnionedIndex :: Either (Index k ls) (Index k rs)}
 
@@ -158,15 +174,15 @@ instance
 
 {-
 >>> import Data.Functor.Const
->>> theRec = Const "Hehe" :< Const "Foo" :< Const "buz" :< EmptyStore :: Record (Const String) '[5,42, 34]
->>> getFactor @(Const String 42) (Const "Hehe" :< Const "Foo" :< Const "buz" :< EmptyStore :: Record (Const String) '[5,42, 34])
+>>> theRec = Const "Hehe" :< Const "Foo" :< Const "buz" :< EmptyRecord :: Record (Const String) '[5,42, 34]
+>>> getFactor @(Const String 42) (Const "Hehe" :< Const "Foo" :< Const "buz" :< EmptyRecord :: Record (Const String) '[5,42, 34])
 Const "Foo"
 
 >>> getFactor @(Const String 52) theRec
 Key `52' is absent in the list:
 '[5, 42, 34]
 
->>> anotherRec = Const "Phew" :< Const "Wow" :< Const "Cool" :< EmptyStore :: Record (Const String) '[94, 5, 2]
+>>> anotherRec = Const "Phew" :< Const "Wow" :< Const "Cool" :< EmptyRecord :: Record (Const String) '[94, 5, 2]
 >>> getFactor @(Const String 5) anotherRec
 Const "Wow"
 

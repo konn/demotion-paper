@@ -28,4 +28,217 @@ That is, a ``witness'' $A$ of $\varphi \vee \psi$ is a tagged union of ``witness
 It suggests that if constraints of interest can be expressed by or recovered from \emph{witnesses}, we can take their disjunction by choosing one of such witnesses.
 If such witnesses can be computed statically and deterministically, the obstacle \Cref{item:openness} is not a problem.
 Further, if users can explicitly \emph{manipulate} such witnesses concretely, we can control the selection strategy of disjunctive clauses, enabling us to resolve \Cref{item:arb-choice} manually.
+
+\subsection{Motivating Example: Field Extraction of Union Types}
+OK, let us see the example.
+Here, we consider the following \hask{HasFactor}-class:
+
+\begin{code}
+class HasFactor a b where
+  getFactor :: b -> a
+\end{code}
+
+The intended semantics of \hask{HasFactor a b} is that ``a type \hask{b} has at least one field of type \hask{a}'', and \hask{getFactor} gives such a value.
+In short, the problem we want to tackle in this section is as follows:
+\begin{quote}
+  \emph{How can we give a} \hask{HasFactor a}\emph{-instance for union types}?
+\end{quote}
+
+\subsubsection{Extensible Records}
+To make the situation simpler, let us introduce another player into the scene: the type \hask{Record h ks} of \emph{extensible records}.
+That is, a value of type \hask{Record h ks} is a record-like structure isomorphic to a record with field labels \hask{ks :: [key]}, where each label \hask{k} in \hask{ks} is associated to the value of type \hask{h k}:
+
+\begin{code}
+data Record f keys where
+  EmptyRecord :: Record f '[]
+  (:<) :: f k -> Record f ks -> Record f (k ': ks)
+\end{code}
+
+That is, we implement \hask{Record} as a heterogeneous linked-list\footnote{%
+This implementation is not meant to be practical.
+In practice, it is much more convenient to allow specify labels and corresponding field type independently, i.e.\ parametrise \hask{Record} over \hask{h :: key -> val -> Type}.
+And if the efficiency of field access matters, underlying representation of extensible records must be arrays or vectors with $O(1)$ random access.
+Furthermore, it is desirable to use type-level ordered maps instead of lists to tune-up type-cheking speed.
+Several efficient implementations can be found on Hackage~\cite{Kinoshita:2020aa,Sterling:2020aa,Thiemann:2020aa}, and we are also planning to publish the in-house packge (still in-progress, though).
+Here, we adopt the above simple API for an exposititory purpose.}.
+We also need a field accessor to retrieve information from a record:
+\begin{code}
+data Index k ks where
+  Here  :: Index k (k ': ks)
+  There :: Index k ks -> Index k (k' ': ks)
+
+-- ...Obvious singleton SIndex and their Sing/Known instances here...
+
+walkIndex :: Index k ks -> Record f ks -> f k
+walkIndex Here (v :< _) = v
+walkIndex (There trail) (_ :< rest) = walkIndex trail rest  
+\end{code}
+A type \hask{Index k ks} is a \emph{witness} of the membership of label \hask{k} in a type-level list \hask{ks}, and \hask{walkIndex} walks an extensible records along a given \hask{Index k ks} and retrieves a value of \hask{h k}\footnote{The same remark on efficiency as above also applies here: it is much more practical to use an index number represented as a newtyped \hask{Int} if one needs $O(1)$ random access on fields.
+In such a case, one has to use \hask{unsafeCoerce} carefully to convince the compiler.}.
+
+We can also compute \hask{Index} at type-level in an obvious way\footnote{Oh, you noticed something? Well, in \Cref{sec:plugins}, we will turn to the implementation of \hask{FindIndex} again.}, where \hask{(<$>)} is a type-level analogue of \hask{fmap}:
+\begin{code}
+type family FindIndex k ks where
+  FindIndex _ '[] = 'Nothing
+  FindIndex k (k ': ks) = 'Just 'Here
+  FindIndex k (_ ': ks) = 'There <$> FindIndex k ks  
+
+type FindIndex' k ks = FromJust ('Text "key not found") (FindIndex k ks)
+\end{code}
+\hask{FindIndex'} is a variant of \hask{FindIndex}, which returns raw membership at type-level if it is found, and throwing a type-error otherwise.
+
+Now that we can compute the index of labels statically, one can implement a variant of \hask{walkIndex} with the label-index statically inferred:
+\begin{code}
+type Member k ks = Known (FindIndex' k ks)
+getRecField :: forall keks h. Member k ks
+  => Record h ks -> h k
+getRecField = walkIndex $ demote $ sing @(FindIndex' k ks)
+\end{code}
+An idea is that if the concrete value of \hask{FindIndex' k ks} is \hask{Known} at the compile-time, we can use it to retrieve a field in a record.
+Note that if the value of \hask{FindIndex key keys} was \hask{'Nothing}, \hask{FindIndex' key keys} reduces to a type-error.
+In such a case, since the type-level language of Haskell is strict, the entire constraint \hask{Known (FindIndex' key keys)} throws a type-error during instance resolution:
+\begin{repl}
+>>> getRecField @Bool (EmptyRecord :: Record Maybe '[])
+Key `Bool' is absent in the list: '[]
+
+>>> getRecField @Bool (Just 'a' :< Just True :< Nothing @() :< EmptyRecord)
+Just True
+\end{repl}
+
+Now, we can give an implementation of \hask{HasFactor (h a) (Record h keys)} with these equipments:
+\begin{code}
+instance (Member a keys, h ~ h') => HasFactor (h' a) (Record h keys) where
+  getFactor = getRecField
+\end{code}
+
+\subsubsection{Factor of a Union --- singleton strikes again!}
+Now we enter the situation where we want disjunctive constraints.
+Consider the following type paring two records together:
+\begin{code}
+data UnionedRecord (h :: k -> Type) (ls :: [k]) (rs :: [k]) = 
+  UnionRec { recL :: Record h ls, recR :: Record h rs }
+\end{code}
+Now, how can we implement instances like \hask{HasFactor (h a) (UnionedRecord h ls rs)}?
+Na\"{i}vely, one might at first want to write an instance like:
+\begin{code}
+instance (HasFactor (h a) (Record h ls) `Or` HasFactor (h a) (Record h rs))
+      => HasFactor (h a) (UnionedRecord h ls rs) where ...
+\end{code}
+But, as noted in the first section, there is no such things in Haskell as restricted \hask{Or}-constraint.
+
+Fortunately, our \hask{HasFactor (h a) (Record h ls)} instance is \emph{witnessed} by a concrete type: \hask{Index a ls}!
+Since its concrete value can be computed statically by \hask{FindIndex} type-family, why not combining the results of them\footnote{Here, \hask{(<|>)} is a type-level left-biased choice operator on \hask{Maybe}s.}?
+\begin{code}
+type UnionedIndex' k ls rs =
+  FromJust ('Text "No label found in both key")
+    ('Left <$> FindIndex k ls <|> 'Right <$> FindIndex k rs)
+
+instance
+  Known (UnionedIndex' a ls rs) =>
+  HasFactor (h a) (UnionedRecord h ls rs) where
+  getFactor (UnionRec l r) =
+    case sing @(UnionedIndex' a ls rs) of
+      SLeft pth -> withKnown pth $ getFactor l
+      SRight pth -> withKnown pth $ getFactor r
+\end{code}
+Everything seems fine, but then GHC complains on call-sites of \hask{getFactor}:
+\begin{repl}
+• Could not deduce (Known (FromJust ('Text "key not found") (FindIndex a ls)))
+  arising from a use of ‘getFactor’
+  from the context: Known (UnionedIndex' a ls rs)
+...
+• In the second argument of ‘($)’, namely ‘getFactor l’
+  In the expression: withKnown pth $ getFactor l
+
+... similar error for `getFactor r' ...
+\end{repl}
+The error seems weired at first glance: we are just giving the \hask{Known} dictionary with \hask{withKnown pth}, where \hask{pth} corresponds either \hask{Index a ls} or \hask{Index a rs}. Why?
+
+The root cause of this error is that the type-checker doesn't know the following facts:
+\begin{enumerate}
+  \item \hask{FromJust ('Text ...)} commutes with \hask{(<|>)}, and
+  \item If \hask{FromJust msg ma} reduces, then \hask{ma ~ 'Just (FromJust msg' ma)} for any \hask{msg'}.
+\end{enumerate}
+Although these two facts seems rather obvious, it needs some non-trivial axioms to infer.
+Hence, if we want to convince the compiler without modifying the instance definitions, we have to augment the compiler with type-checker plugins~\cite{GHC-Team:2020aa}.
+Although writing type-checker plugins is a fun, but not so easy to implement it \emph{correctly}. Is there any other way to avoid this obstacle?
+
+At this point, we must notice one fact: we can still use \emph{any} value of type \hask{Index k ks} to retrieve a value of type \hask{h k} from \hask{Record h ks};.Indeed, as \hask{ks} can have duplicated elements, there can be more than one distinct \hask{Index k ks} at the same time, e.g.\ for \hask{Index 3 '[3 ,5, 4, 3]}.
+\hask{FindIndex} was just a canonical way of computing the left-most such index, if present.
+To summary, requiring \hask{Known (LookupIndex' k ks)} in \hask{getRecField} and the \hask{HasFactor}-instance for extensible records was just too much.
+What we really need is a constraint demanding ``there is at least one value of type \hask{Index k ks} given'', embodied by the following class and helper functions:
+\begin{code}
+class Given a where
+  given :: a
+
+give :: a -> (Given a => r) -> r
+\end{code}
+These are excerpted from widely-used \texttt{reflection} package~\cite{Kmett:2020aa} which implements Implicit Configuration~\cite{Kiselyov:2004aa}.
+
+With this, we can rewrite \hask{getRecField} and the corresponding \hask{HasFactor}-instance in more robust way:
+\begin{code}
+type Member k ks = Given (Index k ks)
+
+getRecField :: forall key keys h. Member key keys => Record h keys -> h key
+getRecField = walkIndex given  -- changed from @sing@
+
+-- | Serves as a default instance for @Member@.
+-- Can be safely overriden by 'give' operator.
+instance Known (FindIndex' k ks)
+      => Given (Index k ks) where
+  given = demote $ sing @(FindIndex' k ks)
+
+instance (Given (Index a keys), h ~ h')
+      => HasFactor (h' a) (Record h keys) where
+  getFactor = getRecField
+\end{code}
+
+With this, we can now successfully implement \hask{HasFactor}-instance for \hask{UnionedRecord} as follows:
+
+\begin{code}
+-- Just to avoid pollution by orphan @Given@ instance
+newtype IndexUnion k ls rs = WrapIndexUnion
+  {getUnionedIndex :: Either (Index k ls) (Index k rs)}
+
+instance Known (UnionedIndex' k ls rs) => Given (IndexUnion k ls rs) where
+  given = WrapIndexUnion $ demote $ sing @(UnionedIndex' k ls rs)
+
+instance Given (IndexUnion k ls rs)
+      => HasFactor (h k) (UnionedRecord h ls rs) where
+  getFactor (UnionRec l r) =
+    case getUnionedIndex $ given @(IndexUnion k ls rs) of
+      Left pth -> give pth $ getFactor l
+      Right pth -> give pth $ getFactor r
+\end{code}
+
+In above two implementations, \hask{Given} instance serves as a ``default instance'' to calculate witness.
+As already shown in the implementation of \hask{getFactor} for \hask{UnionRec}, it can be overriden by \hask{give} operator without resulting in type errors complaining about overlapping instance or ``Could not deduce (Known ...)''.
+This flexibility is the reason we chose to use \hask{Given} class instead of \texttt{ImplicitParams} GHC extention providing similar functionality of dynamic scoping:  the instance shadowing in \texttt{ImplicitParams} can have unpredictable behaviour.
+
+Let us check it works as expected:
+
+\begin{repl}
+>>> theRec = Const "Hehe" :< Const "Foo" :< Const "buz" :< EmptyRecord
+      :: Record (Const String) '[5,42, 34]
+>>> anotherRec = Const "Phew" :< Const "Wow" :< Const "Cool" :< EmptyRecord
+      :: Record (Const String) '[94, 5, 2]
+>>> getFactor @(Const String 42) (UnionRec theRec anotherRec)
+Const "Foo"
+
+>>> getFactor @(Const String 2) (UnionRec theRec anotherRec)
+Const "Cool"
+
+>>> getFactor @(Const String 5) (UnionRec theRec anotherRec)
+Const "Hehe"
+
+-- Beware of reordering:
+>>> getFactor @(Const String 5) (UnionRec anotherRec theRec)
+Const "Wow"
+
+>>> getFactor @(Const String 999) (UnionRec theRec anotherRec)
+A field of type `999' not found in either of fields:
+   Left: '[5, 42, 34]
+  Right: '[94, 5, 2]  
+\end{repl}
+
 \end{document}
