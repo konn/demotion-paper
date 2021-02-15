@@ -13,14 +13,20 @@ This conception of intuitionistic logic is later made precise as Curry-Howard co
 
 \subsection{Preliminaries}
 Throughout this paper, we use the standard method of \emph{singleton}~\cite{Eisenberg:2012} to simulate dependent types in Haskell.
-In particular, we assume the following API\footnote{working example library will be available after blind-review.}:
+In particular, we assume the following API\footnote{A working implementation is available at \texttt{https://github.com/XXXXX} (made available after blind reviews; for now, we provide the identical contents as the supplementary tarball.)}:
 
 \begin{code}
 type family Sing :: k -> Type
 
 class Known a where
   sing :: Sing a
+
 withKnown :: Sing a -> (Known a => r) -> r
+
+type FromJust :: ErrorMessage -> Maybe a -> a
+type family FromJust err may where 
+  FromJust err 'Nothing = TypeError err
+  FromJust _ ('Just a)  = a
 
 type instance Sing = (SNat :: Nat -> Type)
 sNat :: KnownNat n => SNat n
