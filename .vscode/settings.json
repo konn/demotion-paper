@@ -7,7 +7,6 @@
   "github-actions.workflows.pinned.refresh.enabled": true,
   "github-actions.workflows.pinned.workflows": [
     ".github/workflows/latex.yml"
-    , ".github/workflows/supplement.yml"
     , ".github/workflows/supplement-tarball.yml"
   ],
   "catex.image-completion": {

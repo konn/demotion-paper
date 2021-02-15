@@ -3,6 +3,7 @@
 \begin{document}
 \section{Case Study: Dependently-typed Plugin System Parsed Dynamically}
 \label{sec:plugins}
+% TODO: Remove duplicated reference of extensible records and make in line with sec 3
 
 As an application of the methods developed in \Cref{sec:gcd,sec:disj}, now we look into more involved and practical example: demoting existing type-level constraints and resolve it dynamically with systematic change using witness pattern.
 
@@ -45,10 +46,10 @@ pattern EmptyRecord :: Record f '[]
 pattern (:<) :: f k -> Record f keys -> Record f (k ': keys)
 
 data Index k ks
-type family LookupIndex k ks :: Maybe (Index k ks) where ...
-type family LookupIndex' k ks = 
-  FromJust ('Text "Key not found") (LookupIndex k ks)
-type Member k ks = Known (LookupIndex' k ks)
+type family FindIndex k ks :: Maybe (Index k ks) where ...
+type family FindIndex' k ks = 
+  FromJust ('Text "Key not found") (FindIndex k ks)
+type Member k ks = Known (FindIndex' k ks)
 
 getRecField :: Member k ks => Record f ks -> f k
 
@@ -59,15 +60,6 @@ type family All c keys :: Constraint where
 \caption{An abstract API of Extensible Records}
 \label{lst:ext-rec-api}
 \end{listing}
-Here, \hask{Record f keys} is isomorphic to the record type with field labels in \hask{keys}, where each label \hask{k} is associated to the value of type \hask{f k}.
-A type \hask{Index k ks} witnesses the membership of label \hask{k} in a type-level list \hask{ks}, and \hask{LookupIndex} type family computes such membership if it present.
-\hask{LookupIndex'} is a variant of \hask{LookupIndex}, which returns raw membership at type-level if it is found, and throwing a type-error otherwise.
-A function \hask{getRecField} traverses a given record along with a membership \hask{Index k ks} given by type-level constraint \hask{Member}, and returns corresponding field.
-
-In practice, it is much more convenient to allow specify labels and corresponding field type independently, making \hask{f :: key -> val -> Type}.
-Several efficient implementations can be found on Hackage~\cite{Kinoshita:2020aa,Sterling:2020aa,Thiemann:2020aa}.
-Furthermore, it is desirable to use type-level ordered maps instead of lists to tune-up type-cheking speed.
-Here, we adopt the above simple API for exposition.
 
 Built on top of this API, we can now present the entire program architecture is listed in \Cref{lst:plugin-arch}.
 \begin{listing}[hptb]
@@ -92,7 +84,7 @@ type family StoreVal (key :: StoreKey) :: Type where
 
 type SPlugins ps = SList (ps :: [Plugin])
 processStore :: All (RunsWith ks) ps => Store ks -> SPlugins ps -> Outputs ps
-processStore _ SNil = EmptyStore
+processStore _ SNil = EmptyRecord
 processStore store (SCons p ps) = process p store :< processStore store ps
 \end{code}
 \caption{Static API of a (Dependently-Typed) Plugin System}
@@ -121,13 +113,13 @@ Another example, \hask{Greeter} (\Cref{lst:plugin-greet}) is much more complicat
 \begin{listing}
 \begin{code}
 type Greetable keys =
-  ( Known (LookupIndex ( 'PluginStore 'Greeter) keys)
-  , Greetable_ (LookupIndex ( 'PluginStore 'Greeter) keys) keys
+  ( Known (FindIndex ( 'PluginStore 'Greeter) keys)
+  , Greetable_ (FindIndex ( 'PluginStore 'Greeter) keys) keys
   )
 
 type family Greetable_ m keys :: Constraint where
   Greetable_ ( 'Just path) _ = ()
-  Greetable_ 'Nothing keys = Known (LookupIndex 'NameStore keys)
+  Greetable_ 'Nothing keys = Known (FindIndex 'NameStore keys)
 
 makeGreet :: PluginStoreType 'Greeter -> String
 instance IsPlugin 'Greeter where
@@ -136,10 +128,10 @@ instance IsPlugin 'Greeter where
     { greetTarget :: String, greetTimes :: Int, greetOwner :: String }
   newtype PluginOutput 'Greeter = GreetOutput String deriving (Show)
   process _ (store :: Store keys) =
-    case sing @(LookupIndex ('PluginStore 'Greeter) keys) of
+    case sing @(FindIndex ('PluginStore 'Greeter) keys) of
       SJust idx -> withKnown idx $ GreetOutput $
         makeGreet $ getRecField @('PluginStore 'Greeter) store
-      SNothing -> case sing @(LookupIndex 'NameStore keys) of
+      SNothing -> case sing @(FindIndex 'NameStore keys) of
         SJust idx -> withKnown idx $ GreetOutput $ makeGreet $
           GreetEnv (getRecField @'IntStore store) 1 "Greeter"
         SNothing -> GreetOutput "I don't know who you are, anyway, Hi!"
@@ -156,8 +148,23 @@ Its logic is as follows:
 In short, \hask{Greeter} involves fallback strategy on fields in the input store.
 This strategy is formulated as a \hask{Greetable} constraint; first try to inspect the exsitence of the label \hask{PluginStore Greeter}, and then fallback to the condition on the existence of \hask{PluginStore}.
 This fallback strategy can be seeen as an application of the methods of emulating disjunction of type constraints\footnote{%
-In this case, however, it woud suffice to require both \hask{Known (LookupIndex (PluginStore Greeter) keys)} and \hask{Known (LookupIndex NameStore keys)} would suffice. However, in more practical and perforfmance-critical applications, precise handling of disjunctive constraints is crucial.},
+In this case, however, it woud suffice to require both \hask{Known (FindIndex (PluginStore Greeter) keys)} and \hask{Known (FindIndex NameStore keys)} would suffice. However, in more practical and perforfmance-critical applications, precise handling of disjunctive constraints is crucial.},
 presented in \Cref{sec:disj}.
+
+% FIXME: Words on sFindIndex
+% Well, not quite.
+% If one wants to implement singletonised version \hask{sFindIndex} of \hask{FindIndex}, we must apply the methods described in \Cref{sec:gcd} to make clear which branch is taken:
+% \begin{code}
+% type family FindIndex k ks where
+%   FindIndex _ '[] = 'Nothing
+%   FindIndex k (k' ': ks) = FindIndexAux (k === k') k ks
+
+% type FindIndexAux :: forall k'. Bool -> forall k ks -> Maybe (Index k (k' ': ks))
+% type family FindIndexAux eql k rest where
+%   FindIndexAux 'True _ _ = 'Just 'Here
+%   FindIndexAux 'False k ks = 'There `FMap` FindIndex k ks
+% \end{code}
+
 
 \subsection{Notes on Equality}
 At this point, we have three type-level (homogeneous) equalities:
