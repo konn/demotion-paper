@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 0487d80a7faa314a8da6c91a76ab27d22e91df323a20ac880a5c0055239302f2
+-- hash: 3a74479f205c5d1d83f3f02b6f4c783efb5492b3f7a7c137bf53c50c3410e3a2
 
 name:           demotion-examples
 version:        0.1.0.0
@@ -20,6 +20,7 @@ extra-source-files:
 
 library
   exposed-modules:
+      Data.Record
       Data.Type.Nat.GCD
       Data.Type.Path
       Data.Type.PluginMachine
@@ -33,6 +34,7 @@ library
       base >=4.7 && <5
     , ghc-typelits-presburger
     , mtl
+    , reflection
     , these
     , transformers
     , type-natural

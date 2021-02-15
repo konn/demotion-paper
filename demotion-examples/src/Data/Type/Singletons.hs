@@ -12,6 +12,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 {-# OPTIONS_GHC -Wno-unused-imports #-}
 
 module Data.Type.Singletons
@@ -33,10 +34,15 @@ module Data.Type.Singletons
     trustMeNonEqual,
     unsafeTrustMeNonEqual,
     SEither (..),
-    FMap,
-    sFMap,
-    type (<|>),
+    PFunctor (..),
+    FMapMaybe,
+    sFMapMaybe,
+    type (<$>),
+    PAlternative (..),
+    type (++),
+    PApplicative (..),
     LiftMaybe2,
+    Map,
   )
 where
 
@@ -182,17 +188,17 @@ instance Known a => Known ( 'Left a) where
 instance Known a => Known ( 'Right a) where
   sing = SRight sing
 
-sFMap :: (forall x. Sing x -> Sing (f x)) -> SMaybe may -> SMaybe (FMap f may)
-sFMap _ SNothing = SNothing
-sFMap f (SJust x) = SJust (f x)
+sFMapMaybe :: (forall x. Sing x -> Sing (f x)) -> SMaybe may -> SMaybe (FMapMaybe f may)
+sFMapMaybe _ SNothing = SNothing
+sFMapMaybe f (SJust x) = SJust (f x)
 
-type family FMap (f :: k -> k') (n :: Maybe k) :: Maybe k' where
-  FMap _ 'Nothing = 'Nothing
-  FMap f ( 'Just a) = 'Just (f a)
+type family FMapMaybe (f :: k -> k') (n :: Maybe k) :: Maybe k' where
+  FMapMaybe _ 'Nothing = 'Nothing
+  FMapMaybe f ( 'Just a) = 'Just (f a)
 
-type family ma <|> mb where
-  'Nothing <|> a = a
-  'Just a <|> _ = 'Just a
+type family ChoiceMaybe ma mb where
+  ChoiceMaybe 'Nothing a = a
+  ChoiceMaybe ( 'Just a) _ = 'Just a
 
 infixl 3 <|>
 
@@ -241,3 +247,68 @@ instance HasSing Nat where
 type family FromJust msg mb where
   FromJust err 'Nothing = TypeError err
   FromJust _ ( 'Just x) = x
+
+class PFunctor h where
+  type FMap (f :: a -> b) (x :: h a) :: h b
+
+type f <$> ma = FMap f ma
+
+infixl 4 <$>, `FMap`
+
+instance PFunctor Maybe where
+  type FMap f ma = FMapMaybe f ma
+
+type family Map f xs where
+  Map _ '[] = '[]
+  Map f (x ': xs) = f x ': Map f xs
+
+instance PFunctor [] where
+  type FMap f xs = Map f xs
+
+class PFunctor f => PApplicative f where
+  type (ff :: f (a -> b)) <*> (fa :: f a) :: f b
+  type Pure (x :: a) :: f a
+
+infixl 4 <*>
+
+type family LiftMaybe mf ma where
+  LiftMaybe 'Nothing _ = 'Nothing
+  LiftMaybe _ 'Nothing = 'Nothing
+  LiftMaybe ( 'Just f) ( 'Just a) = 'Just (f a)
+
+instance PApplicative Maybe where
+  type mf <*> ma = LiftMaybe mf ma
+  type Pure a = 'Just a
+
+infixr 5 ++
+
+type family ls ++ rs where
+  '[] ++ rs = rs
+  (x ': xs) ++ ys = x ': (xs ++ ys)
+
+type family LiftList mf ma where
+  LiftList '[] _ = '[]
+  LiftList _ '[] = '[]
+  LiftList (f ': fs) xs =
+    Map f xs ++ LiftList fs xs
+
+instance PApplicative [] where
+  type fs <*> as = LiftList fs as
+  type Pure a = '[a]
+
+class PAlternative h where
+  type (fs :: h x) <|> (gs :: h x) :: h x
+  type Empty :: h x
+
+instance PAlternative Maybe where
+  type ma <|> mb = ChoiceMaybe ma mb
+  type Empty = 'Nothing
+
+instance PAlternative [] where
+  type ma <|> mb = ma ++ mb
+  type Empty = '[]
+
+-- >>> :kind! LiftList '[ 'Left, 'Right ] '[1, 2, 3, 4]
+-- LiftList '[ 'Left, 'Right ] '[1, 2, 3, 4] :: [Either Nat Nat]
+-- = '[ 'Left 1, 'Left 2, 'Left 3, 'Left 4, 'Right 1, 'Right 2,
+--      'Right 3, 'Right 4]

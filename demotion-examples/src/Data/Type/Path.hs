@@ -47,15 +47,30 @@ traversePath (Both _ pathR) (R1 g) = traversePath pathR g
 
 type CalcPath a b = CalcPathF a (Rep b)
 
-type CalcPathF :: forall a f -> Maybe (Path a f)
-type family CalcPathF a f where
-  CalcPathF a (K1 i a) = 'Just 'InK1
-  CalcPathF a (M1 i c f) = FMap 'InM1 (CalcPathF a f)
-  CalcPathF a (l :*: r) =
-    FMap 'InL (CalcPathF a l) <|> FMap 'InR (CalcPathF a r)
-  CalcPathF a (l :+: r) = LiftMaybe2 'Both (CalcPathF a l) (CalcPathF a r)
-  CalcPathF a V1 = 'Just 'InV1
-  CalcPathF _ _ = 'Nothing
+type CalcPathF a f = CalcPathFWith @Maybe a f
+
+type CalcPathFWith :: forall h. forall a f -> h (Path a f)
+type family CalcPathFWith a f where
+  CalcPathFWith a (K1 i a) = Pure 'InK1
+  CalcPathFWith a (M1 i c f) = 'InM1 <$> CalcPathFWith a f
+  CalcPathFWith a (l :*: r) =
+    'InL <$> CalcPathFWith a l <|> 'InR <$> CalcPathFWith a r
+  CalcPathFWith a (l :+: r) = 'Both <$> CalcPathFWith a l <*> CalcPathFWith a r
+  CalcPathFWith a V1 = Pure 'InV1
+  CalcPathFWith _ _ = Empty
+
+data MyType a = LLL a Int | RRR Bool Int Double
+  deriving (Read, Show, Eq, Ord, Generic)
+
+-- >>> :kind! CalcPathFWith @[] Int (Rep (MyType Int))
+-- CalcPathFWith @[] Int (Rep (MyType Int)) :: [Path
+--                                                Int (Rep (MyType Int))]
+-- = '[ 'InM1
+--        ('Both
+--           ('InM1 ('InL ('InM1 'InK1))) ('InM1 ('InR ('InL ('InM1 'InK1))))),
+--      'InM1
+--        ('Both
+--           ('InM1 ('InR ('InM1 'InK1))) ('InM1 ('InR ('InL ('InM1 'InK1)))))]
 
 type SPath :: Path a f -> Type
 data SPath (path :: Path a f) where
@@ -118,58 +133,3 @@ data DataA = DataA Int Bool String
   deriving (Read, Show, Eq, Ord, Generic)
 
 type GHasFactor a b = (Generic b, Known (CalcPath' a b))
-
-deriving anyclass instance
-  GHasFactor a DataA => HasFactor a DataA
-
-deriving anyclass instance
-  GHasFactor a DataB => HasFactor a DataB
-
-data DataB = DataB (Maybe Double) [Integer]
-  deriving (Read, Show, Eq, Ord, Generic)
-
-data Unioned a b = Unioned {inLeft :: a, inRight :: b}
-  deriving (Read, Show, Eq, Ord, Generic)
-
-type UnionedPath a l r =
-  FromJust
-    ( 'Text "Neither `" ':<>: 'ShowType l
-        ':<>: 'Text "' nor `"
-        ':<>: 'ShowType r
-        ':<>: 'Text "' has a field of type `"
-        ':<>: 'ShowType a
-        ':<>: 'Text "'"
-    )
-    (FMap 'Left (CalcPath a l) <|> FMap 'Right (CalcPath a r))
-
-instance
-  (Known (UnionedPath a l r), Generic l, Generic r) =>
-  HasFactor a (Unioned l r)
-  where
-  getFactor (Unioned l r) =
-    case sing @(UnionedPath a l r) of
-      SRight pth -> traversePath (demote pth) $ from r
-      SLeft pth -> traversePath (demote pth) $ from l
-
-{-
->>> let unionedAB = Unioned (DataA 42 False "Hey!") (DataB Nothing [4,2])
->>> getFactor @Int unionedAB
-42
-
->>> getFactor @Bool unionedAB
-False
-
->>> getFactor @String unionedAB
-"Hey!"
-
->>> getFactor @(Maybe Double) unionedAB
-Nothing
-
->>> getFactor @(Maybe Bool) unionedAB
-Neither `DataA' nor `DataB' has a field of type `Maybe Bool'
--}
-
-{-
-noInst :: Unioned DataA DataB -> Maybe Bool
-noInst = getFactor
--}
