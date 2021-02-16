@@ -198,12 +198,7 @@ Key `'IntStore' is absent in the list:
 '[ 'NameStore]
 
 >>> processStore (MkStoreEntry @NameStore "Ignored" :< MkStoreEntry @(PluginStore Greeter) (GreetEnv "You" 3 "me") :< EmptyRecord) (sing @'[ 'Greeter])
-Data constructor not in scope:
-  MkSomeEntry :: [Char] -> StoreEntry k0
-Data constructor not in scope:
-  MkSomeEntry
-    :: (String -> Int -> String -> PluginStoreType 'Greeter)
-       -> StoreEntry k1
+GreetOutput "Hi, Hi, Hi, You, from me!" :< EmptyRecord
  -}
 class IsPlugin p => DynamicPlugin p where
   deferDynamicPlugin ::
