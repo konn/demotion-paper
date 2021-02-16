@@ -189,9 +189,22 @@ processStore ::
 processStore _ SNil = EmptyRecord
 processStore store (SCons p ps) = process p store :< processStore store ps
 
--- >>> processStore (MkStoreEntry @NameStore "Superman" :< MkStoreEntry @IntStore 42 :< EmptyRecord) (sing @'[Doubler, Greeter])
--- OutputA 84 :< (GreetOutput "Hi, Superman, from Greeter!" :< EmptyRecord)
+{-
+>>> processStore (MkStoreEntry @NameStore "Superman" :< MkStoreEntry @IntStore 42 :< EmptyRecord) (sing @'[Doubler, Greeter])
+OutputA 84 :< (GreetOutput "Hi, Superman, from Greeter!" :< EmptyRecord)
 
+>>> processStore (MkStoreEntry @NameStore "anonymous" :< EmptyRecord) (sing @'[ Doubler])
+Key `'IntStore' is absent in the list:
+'[ 'NameStore]
+
+>>> processStore (MkStoreEntry @NameStore "Ignored" :< MkStoreEntry @(PluginStore Greeter) (GreetEnv "You" 3 "me") :< EmptyRecord) (sing @'[ 'Greeter])
+Data constructor not in scope:
+  MkSomeEntry :: [Char] -> StoreEntry k0
+Data constructor not in scope:
+  MkSomeEntry
+    :: (String -> Int -> String -> PluginStoreType 'Greeter)
+       -> StoreEntry k1
+ -}
 class IsPlugin p => DynamicPlugin p where
   deferDynamicPlugin ::
     Known keys => pxy p -> Proxy keys -> (Runnable p keys => r) -> Either String r

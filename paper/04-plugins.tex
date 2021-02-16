@@ -38,30 +38,8 @@ In this section, we will see how we can apply witness pattern to achieve these g
 \subsection{Overview of the Architecture of the Static API}\label{sec:static-api}
 Before we get into implement claimed dynamic constraint resolution with witnesses, we first skim thorugh the original static API we consider.
 
-Our example system is designed using so-called extensible records with the API presented in \Cref{lst:ext-rec-api}.
-\begin{listing}[htbp]
-\begin{code}
-data Record (f :: k -> Type) (keys :: [k])
-pattern EmptyRecord :: Record f '[]
-pattern (:<) :: f k -> Record f keys -> Record f (k ': keys)
-
-data Index k ks
-type family FindIndex k ks :: Maybe (Index k ks) where ...
-type family FindIndex' k ks = 
-  FromJust ('Text "Key not found") (FindIndex k ks)
-type Member k ks = Known (FindIndex' k ks)
-
-getRecField :: Member k ks => Record f ks -> f k
-
-type family All c keys :: Constraint where
-  All c '[] = ()
-  All c (k ': ks) = (c k, All c ks)
-\end{code}
-\caption{An abstract API of Extensible Records}
-\label{lst:ext-rec-api}
-\end{listing}
-
-Built on top of this API, we can now present the entire program architecture is listed in \Cref{lst:plugin-arch}.
+Our example system is designed using extensible records, which we developed in \Cref{sec:disj}.
+Built on top of it, we can now present the entire program architecture in \Cref{lst:plugin-arch}.
 \begin{listing}[hptb]
 \begin{code}
 data Plugin = Doubler | Greeter deriving (Eq, Show)
@@ -147,9 +125,27 @@ Its logic is as follows:
 \end{enumerate}
 In short, \hask{Greeter} involves fallback strategy on fields in the input store.
 This strategy is formulated as a \hask{Greetable} constraint; first try to inspect the exsitence of the label \hask{PluginStore Greeter}, and then fallback to the condition on the existence of \hask{PluginStore}.
-This fallback strategy can be seeen as an application of the methods of emulating disjunction of type constraints\footnote{%
-In this case, however, it woud suffice to require both \hask{Known (FindIndex (PluginStore Greeter) keys)} and \hask{Known (FindIndex NameStore keys)} would suffice. However, in more practical and perforfmance-critical applications, precise handling of disjunctive constraints is crucial.},
-presented in \Cref{sec:disj}.
+This fallback strategy can be seeen as an amalgamation of methods presented in \Cref{sec:gcd,sec:disj}, giving another way to emulate disjunction of constraints\footnote{%
+In this case, however, it woud suffice to require both \hask{Known (FindIndex (PluginStore Greeter) keys)} and \hask{Known (FindIndex NameStore keys)} would suffice. However, in more practical and perforfmance-critical applications, precise handling of disjunctive constraints is crucial.}.
+
+Let's see some examples:
+\begin{repl}
+>>> processStore 
+      (MkStoreEntry @NameStore "Superman" :< MkStoreEntry @IntStore 42
+        :< EmptyRecord)
+      (sing @'[Doubler, Greeter])
+OutputA 84 :< (GreetOutput "Hi, Superman, from Greeter!" :< EmptyRecord)
+
+>>> processStore (MkStoreEntry @NameStore "anonymous" :< EmptyRecord) 
+      (sing @'[ Doubler])
+Key `'IntStore' is absent in the list: '[ 'NameStore]
+
+>>> processStore 
+      (MkStoreEntry @NameStore "Ignored"
+        :< MkStoreEntry @(PluginStore Greeter) (GreetEnv "You" 3 "me")
+        :< EmptyRecord) (sing @'[ 'Greeter])
+GreetOutput "Hi, Hi, Hi, You, from me!" :< EmptyRecord
+\end{repl}
 
 % FIXME: Words on sFindIndex
 % Well, not quite.
