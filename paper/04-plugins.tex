@@ -13,18 +13,19 @@ The following signature for the main logic illustrates the idea:
 \begin{code}
 type SPlugins ps = SList (ps :: [Plugin])
 processStore :: All (RunsWith keys) ps
-             => Store keys -> SPlugins ps -> Outputs ps
+  => Store keys -> SPlugins ps -> Outputs ps
 
 class IsPlugin (p :: Plugin) where
-  data PluginStoreType p
+  data PStoreType p
   data PluginOutput p
-  type Runnable p (keys :: [StoreKey]) :: Constraint
-  process :: Runnable p keys => proxy p -> Store keys -> PluginOutput p
+  type Runnable p (ks :: [StoreKey]) :: Constraint
+  process :: Runnable p keys
+    => proxy p -> Store keys -> PluginOutput p
 
 class Runnable p keys => RunsWith keys p
 instance Runnable p keys => RunsWith keys p
 \end{code}
-Thus, each plugin \hask{p} has a type-level constraint \hask{Runnable p keys} (and its flipped version \hask{RunsWith keys p}) to determine if it is runnable with input stores with the given keys.
+Thus, each plugin \hask{p} is given with a type-level constraint \hask{Runnable p keys} (and its flipped version \hask{RunsWith keys p}) to determine if it is runnable with input stores with the given keys.
 A function \hask{processStore} takes an input store and (a singleton of) a list of plugin runnable on the given store, and then returns the final outputs.
 This works well if one explicitly specifies type variables \hask{keys} and \hask{ps} \emph{statically}.
 Suppose that, however, now the situation is changed and we want to determine \hask{keys} and \hask{ps} \emph{dynamically}, depending on external configurations.
@@ -40,47 +41,54 @@ Before we get into implement claimed dynamic constraint resolution with witnesse
 
 Our example system is designed using extensible records, which we developed in \Cref{sec:disj}.
 Built on top of it, we can now present the entire program architecture in \Cref{lst:plugin-arch}.
-\begin{listing}[hptb]
+\begin{listing}[htpb]
 \begin{code}
-data Plugin = Doubler | Greeter deriving (Eq, Show)
-data StoreKey = IntStore | NameStore | PluginStore Plugin deriving (Eq, Show)
+data Plugin = Doubler | Greeter
+data StoreKey = IntStore | NameStore
+              | PStore Plugin
 
 class IsPlugin (p :: Plugin) where
-  data PluginStoreType p
+  data PStoreType p
   data PluginOutput p
-  type Runnable p (keys :: [StoreKey]) :: Constraint
-  process :: Runnable p keys => proxy p -> Store keys -> PluginOutput p
+  type Runnable p (ks :: [StoreKey]) :: Constraint
+  process :: Runnable p keys
+    => proxy p -> Store keys -> PluginOutput p
 
-newtype StoreEntry k = MkStoreEntry {storeEntry :: StoreVal k}
+newtype StoreEntry k =
+  MkStoreEntry {storeEntry :: StoreVal k}
 type Store = Record StoreEntry
 type Outputs = Record PluginOutput
 
-type family StoreVal (key :: StoreKey) :: Type where
+type family StoreVal key where
   StoreVal 'IntStore = Int
   StoreVal 'NameStore = String
-  StoreVal ('PluginStore p) = PluginStoreType p
+  StoreVal ('PStore p) = PStoreType p
 
 type SPlugins ps = SList (ps :: [Plugin])
-processStore :: All (RunsWith ks) ps => Store ks -> SPlugins ps -> Outputs ps
+processStore :: All (RunsWith ks) ps
+  => Store ks -> SPlugins ps -> Outputs ps
 processStore _ SNil = EmptyRecord
-processStore store (SCons p ps) = process p store :< processStore store ps
+processStore store (SCons p ps) = 
+  process p store :< processStore store ps
 \end{code}
-\caption{Static API of a (Dependently-Typed) Plugin System}
+\caption{Static API of a Plugin System}
 \label{lst:plugin-arch}
 \end{listing}
 As described before, \hask{processStore} is our main routine.
 It processes \hask{Store} represented as an extensible record with label type \hask{StoreKey}, calculates \hask{PluginOutput} for each plugin specified in a type-level list \hask{ps}, and bundles them into a single extensible record \hask{Outputs ps}.
-\hask{StoreKey} can be either \hask{IntStore}, \hask{NameStore} or \hask{PluginStore p} for some plugin \hask{p}, allowing storing plugin specific configuration in the store.
+\hask{StoreKey} can be either \hask{IntStore}, \hask{NameStore} or \hask{PStore p} for some plugin \hask{p}, allowing storing plugin specific configuration in the store.
 
 Let's see an actual implementations for plugins \hask{Doubler} and \hask{Greeter}.
 \hask{Doubler} (\Cref{lst:plugin-double}) is simple: it reas the value of \hask{IntStore}, returns the value multiplied by $2$.
 \begin{listing}[htbp]
 \begin{code}
 instance IsPlugin 'Doubler where
-  data PluginStoreType 'Doubler = DoubleStore deriving (Show, Eq, Ord)
-  newtype PluginOutput 'Doubler = OutputA Int deriving (Show, Eq, Ord)
-  type Runnable 'Doubler keys = Member 'IntStore keys
-  process _ store = OutputA $ 2 * getRecField @'IntStore store
+  data PStoreType 'Doubler = DoubleStore
+  newtype PluginOutput 'Doubler = OutputA Int
+  type Runnable 'Doubler keys = 
+    Member 'IntStore keys
+  process _ store = OutputA $
+    2 * getRecField @'IntStore store
 \end{code}
 \caption{An implementation of \textt{Doubler}.}
 \label{lst:plugin-double}
@@ -91,60 +99,75 @@ Another example, \hask{Greeter} (\Cref{lst:plugin-greet}) is much more complicat
 \begin{listing}
 \begin{code}
 type Greetable keys =
-  ( Known (FindIndex ( 'PluginStore 'Greeter) keys)
-  , Greetable_ (FindIndex ( 'PluginStore 'Greeter) keys) keys
+  ( Known (FindIndex ( 'PStore 'Greeter) keys)
+  , Greetable_ 
+    (FindIndex ( 'PStore 'Greeter) keys) keys
   )
 
 type family Greetable_ m keys :: Constraint where
   Greetable_ ( 'Just path) _ = ()
-  Greetable_ 'Nothing keys = Known (FindIndex 'NameStore keys)
+  Greetable_ 'Nothing keys = 
+    Known (FindIndex 'NameStore keys)
 
-makeGreet :: PluginStoreType 'Greeter -> String
+makeGreet :: PStoreType 'Greeter -> String
 instance IsPlugin 'Greeter where
   type Runnable 'Greeter keys = Greetable keys
-  data PluginStoreType 'Greeter = GreetEnv
-    { greetTarget :: String, greetTimes :: Int, greetOwner :: String }
-  newtype PluginOutput 'Greeter = GreetOutput String deriving (Show)
+  data PStoreType 'Greeter = GreetEnv
+    { greetTarget :: String
+    , greetTimes :: Int, greetOwner :: String }
+  newtype PluginOutput 'Greeter = 
+    GreetOutput String deriving (Show)
   process _ (store :: Store keys) =
-    case sing @(FindIndex ('PluginStore 'Greeter) keys) of
-      SJust idx -> withKnown idx $ GreetOutput $
-        makeGreet $ getRecField @('PluginStore 'Greeter) store
-      SNothing -> case sing @(FindIndex 'NameStore keys) of
-        SJust idx -> withKnown idx $ GreetOutput $ makeGreet $
-          GreetEnv (getRecField @'IntStore store) 1 "Greeter"
-        SNothing -> GreetOutput "I don't know who you are, anyway, Hi!"
+    case sing
+        @(FindIndex ('PStore 'Greeter) keys) of
+     SJust idx -> withKnown idx $ GreetOutput $
+       makeGreet $ getRecField 
+         @('PStore 'Greeter) store
+     SNothing ->
+      case sing @(FindIndex 'NameStore keys) of
+       SJust idx -> withKnown idx $ GreetOutput $
+         makeGreet $ GreetEnv
+          (getRecField @'IntStore store)
+          1 "Greeter"
+       SNothing -> GreetOutput "Hi, someone!"
 \end{code}
 \caption{An implementation of \texttt{Greeter}.}
 \label{lst:plugin-greet}
 \end{listing}
 Its logic is as follows:
 \begin{enumerate}
-  \item If there is a field with label \hask{PluginStore Greeter}, generate greeting message based on it;
+  \item If there is a field with label \hask{PStore Greeter}, generate greeting message based on it;
   \item if \hask{NameStore} is given, greet once to that name;
   \item otherwise, return the default greeting message.
 \end{enumerate}
 In short, \hask{Greeter} involves fallback strategy on fields in the input store.
-This strategy is formulated as a \hask{Greetable} constraint; first try to inspect the exsitence of the label \hask{PluginStore Greeter}, and then fallback to the condition on the existence of \hask{PluginStore}.
+This strategy is formulated as a \hask{Greetable} constraint; first try to inspect the exsitence of the label \hask{PStore Greeter}, and then fallback to the condition on the existence of \hask{PStore}.
 This fallback strategy can be seeen as an amalgamation of methods presented in \Cref{sec:gcd,sec:disj}, giving another way to emulate disjunction of constraints\footnote{%
-In this case, however, it woud suffice to require both \hask{Known (FindIndex (PluginStore Greeter) keys)} and \hask{Known (FindIndex NameStore keys)} would suffice. However, in more practical and perforfmance-critical applications, precise handling of disjunctive constraints is crucial.}.
+In this case, however, it woud suffice to require both \hask{Known (FindIndex (PStore Greeter) keys)} and \hask{Known (FindIndex NameStore keys)} would suffice. However, in more practical and perforfmance-critical applications, precise handling of disjunctive constraints is crucial.}.
 
 Let's see some examples:
 \begin{repl}
 >>> processStore 
-      (MkStoreEntry @NameStore "Superman" :< MkStoreEntry @IntStore 42
+      (MkStoreEntry @NameStore "Superman"
+        :< MkStoreEntry @IntStore 42
         :< EmptyRecord)
       (sing @'[Doubler, Greeter])
-OutputA 84 :< (GreetOutput "Hi, Superman, from Greeter!" :< EmptyRecord)
+OutputA 84
+  :< GreetOutput "Hi, Superman, from Greeter!"
+  :< EmptyRecord
 
->>> processStore (MkStoreEntry @NameStore "anonymous" :< EmptyRecord) 
+>>> processStore 
+      (MkStoreEntry @NameStore "anonymous"
+        :< EmptyRecord) 
       (sing @'[ Doubler])
-Key `'IntStore' is absent in the list: '[ 'NameStore]
+Key `'IntStore' is absent in: '[ 'NameStore]
 
 >>> processStore 
       (MkStoreEntry @NameStore "Ignored"
-        :< MkStoreEntry @(PluginStore Greeter) (GreetEnv "You" 3 "me")
+        :< MkStoreEntry @(PStore Greeter) 
+            (GreetEnv "You" 2 "me")
         :< EmptyRecord) (sing @'[ 'Greeter])
-GreetOutput "Hi, Hi, Hi, You, from me!" :< EmptyRecord
+GreetOutput "Hi, Hi, You, from me!" :< EmptyRecord
 \end{repl}
 
 \subsection{Make it dynamic}
@@ -155,14 +178,20 @@ In particular, we will make the resolution of \hask{Runnable} constraints dynami
 processStoreDynamic
   :: Known keys
   => Store keys -> [Plugin]
-  -> Either String (SomeRecord (RunsWith keys) PluginOutput)
+  -> Either String 
+    (SomeRecord (RunsWith keys) PluginOutput)
+
+data SomeRecord c f where
+  MkSomeRecord :: All c keys => Sing keys
+    -> Record f keys -> SomeRecord c f
 \end{code}
 
 One nontrivial challenge here is to resolve constraints of form \hask{Runnable} at \emph{runtime}, not \emph{compile-time}.
-Fortunately, there is a well-known design pattern to allow such instance resolutions at runtime: the \emph{deferrable constraint} pattern:
+First, there is a well-known design pattern to allow such instance resolutions at runtime: the \emph{deferrable constraint} pattern:
 \begin{code}
 class Deferrable p where
-  deferEither :: proxy p -> (p => r) -> Either String r
+  deferEither :: proxy p -> (p => r) 
+              -> Either String r
 \end{code}
 This is provided in the module \hask{Data.Constraint.Deferrable} in \texttt{constraints} package~\cite{Kmett:2020ab}, and it was first proposed by Dimitrios Vytiniotis\footnote{The author couldn't find the original reference proposing this pattern; pointers welcome!}.
 Unfortunately, we cannot write instances of \hask{Deferrable (Runnable p keys)} in general, as \hask{Runnable} is a \emph{type family} and not a \emph{class constructor}.
@@ -171,23 +200,71 @@ Instead, we provide the dedicated class \hask{DynamicPlugin} of plugins which al
 class IsPlugin p => DynamicPlugin p where
   deferDynamicPlugin
     :: Known keys
-    => pxy p -> Proxy keys -> (Runnable p keys => r) -> Either String r
+    => pxy p -> Proxy keys
+    -> (Runnable p keys => r) -> Either String r
 \end{code}
 
-% FIXME: Words on sFindIndex
-% Well, not quite.
-% If one wants to implement singletonised version \hask{sFindIndex} of \hask{FindIndex}, we must apply the methods described in \Cref{sec:gcd} to make clear which branch is taken:
-% \begin{code}
-% type family FindIndex k ks where
-%   FindIndex _ '[] = 'Nothing
-%   FindIndex k (k' ': ks) = FindIndexAux (k === k') k ks
+So it remains to implement \hask{IsPlugin} instances for each plugins.
+Fortunately, all the \hask{Runnable} definitions defined so far can be resolved with singleton manipulation.
 
-% type FindIndexAux :: forall k'. Bool -> forall k ks -> Maybe (Index k (k' ': ks))
-% type family FindIndexAux eql k rest where
-%   FindIndexAux 'True _ _ = 'Just 'Here
-%   FindIndexAux 'False k ks = 'There `FMap` FindIndex k ks
-% \end{code}
+Let's see how to resolve \hask{Runnable 'Doubler keys} dynamically.
+Recall its definition:
+\begin{code}
+type Runnable 'Doubler ks = Member 'IntStore ks
+\end{code}
+By definition, \hask{Member 'IntStore keys ~ Given (Index 'IntStore keys)} and the default implementation is resolved with the superclass constraint \hask{Known (FindIndex'  'IntStore keys)}.
+Hence, assuming
+\begin{code}
+sFindIndex :: Sing key -> SList keys
+      -> SMaybe (FindIndex key keys)
+\end{code}
+we can implement \hask{DynamicPlugin 'Doubler} as follows:
+\begin{code}
+instance DynamicPlugin 'Doubler where
+  deferDynamicPlugin _ (_ :: Proxy keys) act =
+  case sFindIndex SIntStore $ sing @keys of
+    SNothing -> Left "Doubler requries IntStore key"
+    SJust v -> withKnown v $ Right act
+\end{code}
+We can likewise implement the instance for \hask{Greeter}:
+\begin{code}
+instance DynamicPlugin 'Greeter where
+  deferDynamicPlugin _ (_ :: Proxy keys) act =
+    case sFindIndex (SPStore SGreeter) keys of
+      SJust pth -> withKnown pth $ Right act
+      SNothing ->
+        withKnown (sFindIndex SNameStore keys) $
+          Right act
+    where keys = sing @keys
+\end{code}
 
+\subsubsection{Three representations of type-level equality}
+Hence, it remains to implement the \hask{sFindIndex} function, the singletonised version of type-level \hask{FindIndex}.
+Recall our current implementation of \hask{FindIndex}:
+\begin{code}
+type family FindIndex k ks where
+  FindIndex _ '[] = 'Nothing
+  FindIndex k (k ': ks) = 'Just 'Here
+  FindIndex k (_ ': ks) =
+    'There <$> FindIndex k ks  
+\end{code}
+A clever reader can notice that, as we did in \Cref{sec:gcd}, we have to modify this definition to recoginise \emph{witnesses} to distinguish evaluation paths.
+This is exactly the case, and we make the following tweak:
+\begin{code}
+type FindIndex :: forall k ks -> Maybe (Index k ks)
+type family FindIndex k ks where
+  FindIndex _ '[] = 'Nothing
+  FindIndex k (k' ': ks) = 
+    FindIndexAux (k === k') k ks
+
+type FindIndexAux
+  :: forall k'. Bool -> forall k ks
+  -> Maybe (Index k (k' ': ks))
+type family FindIndexAux eql k rest where
+  FindIndexAux 'True _ _ = 'Just 'Here
+  FindIndexAux 'False k ks = 
+    'There <$> FindIndex k ks
+\end{code}
 
 \subsection{Notes on Equality}
 At this point, we have three type-level (homogeneous) equalities:
