@@ -9,10 +9,9 @@ It is quite simple as all we have to do is just to implement Euclidean algorithm
 % TODO: Clarify the API and libraries we use
 
 \begin{code}
-{-# LANGUAGE DataKinds, TypeFamilies, UndecidableInstances #-}
 import GHC.TypeLits
 
-type family GCD (n :: Nat) (m :: Nat) :: Nat where
+type family GCD n m where
   GCD 0 m = m
   GCD n 0 = n
   GCD n m = GCD (Mod m n) n
@@ -39,30 +38,27 @@ sZero :: SNat 0
 sZero = sNat
 
 sGCD :: SNat n -> SNat m -> SNat (GCD n m)
-sGCD sn sm = case (testEquality sn sZero, testEquality sm sZero) of
-  (Just Refl, _) -> sm
-  (_, Just Refl) -> sn
-  (Nothing, Nothing) -> sGCD (sMod sm sn) sn
+sGCD sn sm =
+  case ( testEquality sn sZero, 
+         testEquality sm sZero) of
+    (Just Refl, _) -> sm
+    (_, Just Refl) -> sn
+    (Nothing, Nothing) -> sGCD (sMod sm sn) sn
 \end{code}
 
 First two lines type-checks as expected, but the last case results in the following type error:
 
 \begin{repl}
-• Couldn't match type ‘GCD (Mod m n) n’ with ‘GCD n m’
+• Couldn't match type ‘GCD (Mod m n) n’
+  with ‘GCD n m’
   Expected type: SNat (GCD n m)
     Actual type: SNat (GCD (Mod m n) n)
   NB: ‘GCD’ is a non-injective type family
-• In the expression: sGCD (sMod sm sn) sn
-  In a case alternative: (Nothing, Nothing) -> sGCD (sMod sm sn) sn
-  In the expression:
-    case (testEquality sn sZero, testEquality sm sZero) of
-      (Just Refl, _) -> sm
-      (_, Just Refl) -> sn
-      (Nothing, Nothing) -> sGCD (sMod sm sn) sn
+  ...
 \end{repl}
 
 Why? The definition of \hask{sGCD} seems almost literally the same as type-level \hask{GCD}.
-It first match \hask{n} against \hask{0}, then \hask{m} against \hask{0}, and finally fallbacks to the term \hask{GCD (Mod m n) n}.
+It first match \hask{n} against \hask{0}, then \hask{m} against \hask{0}, and finally fallbacks to \hask{GCD (Mod m n) n}.
 
 Carefully analysing first two cases, one can realise that there are additional type-level constraint introduced by \hask{Refl} GADT constructor:
 
@@ -91,7 +87,8 @@ type GCD n m = GCD_ (n == 0) (m == 0) n m
 type family GCD_ nEq0 mEq0 n m :: Nat where
   GCD_ 'True  _      _ m = m   -- n ~ 0; return m
   GCD_ 'False 'True  n _ = n   -- m ~ 0; return n
-  GCD_ 'False 'False n m = GCD_ (Mod m n == 0) 'False (Mod m n) n  -- neither!
+  GCD_ 'False 'False n m = 
+    GCD_ (Mod m n == 0) 'False (Mod m n) n
 \end{code}
 
 Here, we have two type-level functions: newly defined one, \hask{GCD_}, is a main loop implementing Euclidean algorithm.
@@ -104,11 +101,8 @@ Now that we can give the compiler witnesses as the first two type-arguments of \
 First, we need \emph{demoted} version of type-level \hask{(==)}.
 The first attempt might go as follows:
 \begin{code}
-data SBool p where
-  STrue  :: SBool 'True
-  SFalse :: SBool 'False
-
-(%==) :: TestEquality f => f a -> f b -> SBool (a == b)
+(%==) :: TestEquality f
+      => f a -> f b -> SBool (a == b)
 sa %== sb = case testEquality sa sb of
   Just Refl -> STrue
   Nothing -> SFalse
@@ -155,7 +149,8 @@ We will revisit to a treatment of type-level equality in \Cref{sec:plugins}.
 Demoted version of this now gets:
 
 \begin{code}
-(%===) :: TestEquality f => f a -> f b -> SBool (a === b)
+(%===) :: TestEquality f
+       => f a -> f b -> SBool (a === b)
 sa %=== sb = case testEquality sa sb of
   Just Refl -> STrue
   Nothing -> SFalse  
@@ -170,7 +165,6 @@ At this very point, there is no other way than resorting to the ancient cursed s
 \begin{code}
 import Unsafe.Coerce
 
-(%===) :: TestEquality f => f a -> f b -> SBool (a === b)
 sa %=== sb = case testEquality sa sb of
   Just Refl -> STrue
   Nothing -> unsafeCoerce SFalse  
@@ -188,15 +182,17 @@ Anyway, we are finally at the point of implementing working \hask{sGCD}, replaci
 type GCD n m = GCD_ (n === 0) (m === 0) n m
 
 type family GCD_ nEq0 mEq0 n m :: Nat where
-  GCD_ 'True  _      _ m = m -- n is zero; return m
-  GCD_ 'False 'True  n _ = n -- m is zero; return n
-  GCD_ 'False 'False n m = GCD_ (Mod m n === 0) 'False (Mod m n) n
+  GCD_ 'True  _      _ m = m
+  GCD_ 'False 'True  n _ = n
+  GCD_ 'False 'False n m = 
+    GCD_ (Mod m n === 0) 'False (Mod m n) n
 
 sGCD :: SNat n -> SNat m -> SNat (GCD n m)
-sGCD sn sm = case (sn %=== sZero, sm %=== sZero) of
-  (STrue, _) -> sm
-  (SFalse, STrue) -> sn
-  (SFalse, SFalse) -> sGCD (sMod sm sn) sn
+sGCD sn sm =
+  case (sn %=== sZero, sm %=== sZero) of
+    (STrue, _) -> sm
+    (SFalse, STrue) -> sn
+    (SFalse, SFalse) -> sGCD (sMod sm sn) sn
 \end{code}
 
 Finally, the compiler gets happy with all the definitions!
