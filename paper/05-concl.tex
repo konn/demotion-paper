@@ -1,0 +1,16 @@
+%!TeX root = demotion-paper.tex
+\documentclass[demotion-paper.tex]{subfiles}
+\begin{document}
+\section{Conclusions}
+We demonstrated how can we use the constructive point of view, which pays attention to \emph{witnesses}, as useful guiding princple in desigining embedded dependent type-systems in Haskell.
+As a concrete example, we have demonstrated:
+\begin{enumerate}
+  \item We can use type-level arguments \emph{witnessing} evaluation paths in closed type-families, enabling us to write corresponding singletonised function much easier afterwards.
+  \item We can emulate disjunction of type constraints if it is recoverable from \emph{witnesses} that is statically computable at type-level. Explicit witness manipulation also allows us to control instance resolution strategy.
+  \item We can combine \emph{witness} (including singletons) manipulation and \hask{Deferrable} pattern to realise dependently-typed yet extensible plugin system, which can be dynamically type-checked at \emph{runtime}.
+  \item It is convenient to provide a unified witness type for extensionally equivalent, but not definitionally constraints.
+  We gave an example of a unified witness for three type-level equalities and combinators to work on them.
+\end{enumerate}
+
+% TODO: Say something cool
+\end{document}
