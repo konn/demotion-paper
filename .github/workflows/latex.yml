@@ -17,7 +17,7 @@ env:
   JOBNAME: demotion-paper
   ARTIFACT_NAME: Paper
   PAGE_LOWERBOUND: 1 # 10 # Disabled for now, as we haven't actually started this project!
-  PAGE_UPPERBOUND: 25
+  PAGE_UPPERBOUND: 12
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
