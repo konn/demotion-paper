@@ -35,6 +35,8 @@ where
 
 import Data.Kind
 import Data.Reflection
+import Data.Type.Equality
+import Data.Type.Nat.GCD ((%===))
 import Data.Type.Natural (Equality (Equal, NonEqual), type (===))
 import Data.Type.Path
 import Data.Type.Singletons
@@ -140,7 +142,8 @@ data UnionedRecord (h :: k -> Type) (ls :: [k]) (rs :: [k]) = UnionRec
   { recL :: Record h ls
   , recR :: Record h rs
   }
-  deriving (Show)
+
+deriving instance (All (ShowF h) ls, All (ShowF h) rs) => Show (UnionedRecord h ls rs)
 
 -- Just to avoid pollution by orphan @Given@ instance
 newtype IndexUnion k ls rs = WrapIndexUnion

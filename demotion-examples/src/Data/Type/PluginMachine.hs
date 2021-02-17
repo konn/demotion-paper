@@ -30,19 +30,31 @@ import Data.Record
 import Data.Type.Natural (Equality (Equal, NonEqual))
 import Data.Type.Singletons
   ( All,
+    HasSing (..),
     Known (..),
     SEqual (..),
     SList (..),
     SMaybe (..),
     Sing,
+    SomeSing (MkSomeSing),
     demote,
+    sFMapMaybe,
+    trustMeNonEqual,
     withKnown,
+    withPromoted,
+    type (<$>),
   )
 import Type.Reflection (Typeable)
 import Unsafe.Coerce (unsafeCoerce)
 
 data Plugin = Doubler | Greeter
   deriving (Read, Show, Eq, Ord, Typeable)
+
+instance HasSing Plugin where
+  promote Doubler = MkSomeSing SDoubler
+  promote Greeter = MkSomeSing SGreeter
+  demote SDoubler = Doubler
+  demote SGreeter = Greeter
 
 data SPlugin (p :: Plugin) where
   SDoubler :: SPlugin 'Doubler
@@ -52,7 +64,6 @@ data StoreKey
   = IntStore
   | NameStore
   | PluginStore Plugin
-  | GlobalStore
   deriving (Typeable, Eq, Ord, Show)
 
 type GlobalEnv = ()
@@ -61,32 +72,31 @@ type family StoreVal (key :: StoreKey) :: Type where
   StoreVal 'IntStore = Int
   StoreVal 'NameStore = String
   StoreVal ( 'PluginStore p) = PluginStoreType p
-  StoreVal 'GlobalStore = GlobalEnv
 
 data SStoreKey (key :: StoreKey) where
   SIntStore :: SStoreKey 'IntStore
   SNameStore :: SStoreKey 'NameStore
   SPluginStore :: SPlugin p -> SStoreKey ( 'PluginStore p)
-  SGlobalStore :: SStoreKey 'GlobalStore
 
 instance SEqual Plugin where
   SDoubler %~ SDoubler = Equal
-  SDoubler %~ _ = unsafeCoerce $ NonEqual @0 @1
+  SDoubler %~ SGreeter = NonEqual
   SGreeter %~ SGreeter = Equal
-  SGreeter %~ _ = unsafeCoerce $ NonEqual @0 @1
+  SGreeter %~ SDoubler = NonEqual
 
 instance SEqual StoreKey where
   SIntStore %~ SIntStore = Equal
-  SIntStore %~ _ = unsafeCoerce $ NonEqual @0 @1
+  SIntStore %~ SNameStore = NonEqual
+  SIntStore %~ SPluginStore {} = NonEqual
   SNameStore %~ SNameStore = Equal
-  SNameStore %~ _ = unsafeCoerce $ NonEqual @0 @1
-  SGlobalStore %~ SGlobalStore = Equal
-  SGlobalStore %~ _ = unsafeCoerce $ NonEqual @0 @1
+  SNameStore %~ SIntStore = NonEqual
+  SNameStore %~ SPluginStore {} = NonEqual
   SPluginStore p %~ SPluginStore q =
     case p %~ q of
       Equal -> Equal
-      NonEqual -> unsafeCoerce $ NonEqual @0 @1
-  SPluginStore {} %~ _ = unsafeCoerce $ NonEqual @0 @1
+      NonEqual -> trustMeNonEqual
+  SPluginStore {} %~ SIntStore = NonEqual
+  SPluginStore {} %~ SNameStore = NonEqual
 
 type instance Sing = SStoreKey
 
@@ -100,9 +110,6 @@ instance Known 'Greeter where
 
 instance Known 'IntStore where
   sing = SIntStore
-
-instance Known 'GlobalStore where
-  sing = SGlobalStore
 
 instance Known 'NameStore where
   sing = SNameStore
@@ -219,24 +226,53 @@ instance DynamicPlugin 'Greeter where
             withKnown (sFindIndex SNameStore keys) $
               Right act
 
-data SomeDynamicPlugin where
-  MkDyn :: DynamicPlugin p => Sing p -> SomeDynamicPlugin
-
 data PluginsOn keys where
   MkSomePlugins :: All (RunsWith keys) ps => SPlugins ps -> PluginsOn keys
 
-toSomeDyns :: forall keys. Known keys => [SomeDynamicPlugin] -> Either String (PluginsOn keys)
+toSomeDyns :: forall keys. Known keys => [Plugin] -> Either String (PluginsOn keys)
 toSomeDyns [] = pure $ MkSomePlugins SNil
-toSomeDyns (MkDyn (p :: SPlugin p) : rest) = do
+toSomeDyns (p : rest) = do
   MkSomePlugins ps <- toSomeDyns @keys rest
-  deferDynamicPlugin @p @keys Proxy Proxy (MkSomePlugins $ SCons p ps)
+  withPromoted p $ \case
+    SDoubler ->
+      deferDynamicPlugin
+        (Proxy @ 'Doubler)
+        (Proxy @keys)
+        (MkSomePlugins $ SCons SDoubler ps)
+    SGreeter ->
+      deferDynamicPlugin
+        (Proxy @ 'Greeter)
+        (Proxy @keys)
+        (MkSomePlugins $ SCons SGreeter ps)
 
-runDynamicPlugins ::
+processStoreDynamic ::
   forall keys.
   Known keys =>
   Store keys ->
-  [SomeDynamicPlugin] ->
+  [Plugin] ->
   Either String (SomeRecord (RunsWith keys) PluginOutput)
-runDynamicPlugins store ps = do
+processStoreDynamic store ps = do
   MkSomePlugins (sps :: SPlugins ps) <- toSomeDyns @keys ps
   pure $ MkSomeRecord sps $ processStore store sps
+
+showsPs :: forall store. SomeRecord (RunsWith store) PluginOutput -> [ShowS]
+showsPs (MkSomeRecord _ EmptyRecord) = []
+showsPs (MkSomeRecord (_ `SCons` xs) (s :< ss)) =
+  shows s : showsPs @store (MkSomeRecord xs ss)
+
+instance Show (SomeRecord (RunsWith store) PluginOutput) where
+  showsPrec d x =
+    showParen (d > 10) $
+      foldr
+        (\a b -> a . showString " :< " . b)
+        (showString "EmptyRecord")
+        (showsPs x)
+
+{-
+>>>  processStoreDynamic (MkStoreEntry @NameStore "Superman"        :< MkStoreEntry @IntStore 42        :< EmptyRecord) [Doubler, Greeter]
+Right (OutputA 84 :< GreetOutput "Hi, Superman, from Greeter!" :< EmptyRecord)
+
+>>> processStoreDynamic (MkStoreEntry @NameStore "anonymous"     :< EmptyRecord) [Doubler]
+Left "Doubler requries IntStore key"
+
+-}

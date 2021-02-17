@@ -12,29 +12,29 @@ An input store is represented as a kind of extensible record indexed with a type
 The following signature for the main logic illustrates the idea:
 \begin{code}
 type SPlugins ps = SList (ps :: [Plugin])
-processStore :: All (RunsWith keys) ps
+processStore :: All (RunsOn keys) ps
   => Store keys -> SPlugins ps -> Outputs ps
 
 class IsPlugin (p :: Plugin) where
   data PStoreType p
-  data PluginOutput p
+  data POutput p
   type Runnable p (ks :: [StoreKey]) :: Constraint
   process :: Runnable p keys
-    => proxy p -> Store keys -> PluginOutput p
+    => proxy p -> Store keys -> POutput p
 
-class Runnable p keys => RunsWith keys p
-instance Runnable p keys => RunsWith keys p
+class Runnable p keys => RunsOn keys p
+instance Runnable p keys => RunsOn keys p
 \end{code}
-Thus, each plugin \hask{p} is given with a type-level constraint \hask{Runnable p keys} (and its flipped version \hask{RunsWith keys p}) to determine if it is runnable with input stores with the given keys.
+Thus, each plugin \hask{p} is given with a type-level constraint \hask{Runnable p keys} (and its flipped version \hask{RunsOn keys p}) to determine if it is runnable with input stores with the given keys.
 A function \hask{processStore} takes an input store and (a singleton of) a list of plugin runnable on the given store, and then returns the final outputs.
 This works well if one explicitly specifies type variables \hask{keys} and \hask{ps} \emph{statically}.
 Suppose that, however, now the situation is changed and we want to determine \hask{keys} and \hask{ps} \emph{dynamically}, depending on external configurations.
 This poses two challenges:
 \begin{enumerate}
-  \item We have to resolve constraint \hask{All (RunsWith keys) p} at runtime, and
+  \item We have to resolve constraint \hask{All (RunsOn keys) p} at runtime, and
   \item We have to demote type-level operators as singletonised functions.
 \end{enumerate}
-In this section, we will see how we can apply witness pattern to achieve these goals safely.
+In this section, we will see how we can apply the witness-pattern to achieve these goals safely.
 
 \subsection{Overview of the Architecture of the Static API}\label{sec:static-api}
 Before we get into implement claimed dynamic constraint resolution with witnesses, we first skim thorugh the original static API we consider.
@@ -49,15 +49,15 @@ data StoreKey = IntStore | NameStore
 
 class IsPlugin (p :: Plugin) where
   data PStoreType p
-  data PluginOutput p
+  data POutput p
   type Runnable p (ks :: [StoreKey]) :: Constraint
   process :: Runnable p keys
-    => proxy p -> Store keys -> PluginOutput p
+    => proxy p -> Store keys -> POutput p
 
 newtype StoreEntry k =
   MkStoreEntry {storeEntry :: StoreVal k}
 type Store = Record StoreEntry
-type Outputs = Record PluginOutput
+type Outputs = Record POutput
 
 type family StoreVal key where
   StoreVal 'IntStore = Int
@@ -65,7 +65,7 @@ type family StoreVal key where
   StoreVal ('PStore p) = PStoreType p
 
 type SPlugins ps = SList (ps :: [Plugin])
-processStore :: All (RunsWith ks) ps
+processStore :: All (RunsOn ks) ps
   => Store ks -> SPlugins ps -> Outputs ps
 processStore _ SNil = EmptyRecord
 processStore store (SCons p ps) = 
@@ -75,7 +75,7 @@ processStore store (SCons p ps) =
 \label{lst:plugin-arch}
 \end{listing}
 As described before, \hask{processStore} is our main routine.
-It processes \hask{Store} represented as an extensible record with label type \hask{StoreKey}, calculates \hask{PluginOutput} for each plugin specified in a type-level list \hask{ps}, and bundles them into a single extensible record \hask{Outputs ps}.
+It processes \hask{Store} represented as an extensible record with label type \hask{StoreKey}, calculates \hask{POutput} for each plugin specified in a type-level list \hask{ps}, and bundles them into a single extensible record \hask{Outputs ps}.
 \hask{StoreKey} can be either \hask{IntStore}, \hask{NameStore} or \hask{PStore p} for some plugin \hask{p}, allowing storing plugin specific configuration in the store.
 
 Let's see an actual implementations for plugins \hask{Doubler} and \hask{Greeter}.
@@ -84,7 +84,7 @@ Let's see an actual implementations for plugins \hask{Doubler} and \hask{Greeter
 \begin{code}
 instance IsPlugin 'Doubler where
   data PStoreType 'Doubler = DoubleStore
-  newtype PluginOutput 'Doubler = OutputA Int
+  newtype POutput 'Doubler = OutputA Int
   type Runnable 'Doubler keys = 
     Member 'IntStore keys
   process _ store = OutputA $
@@ -115,7 +115,7 @@ instance IsPlugin 'Greeter where
   data PStoreType 'Greeter = GreetEnv
     { greetTarget :: String
     , greetTimes :: Int, greetOwner :: String }
-  newtype PluginOutput 'Greeter = 
+  newtype POutput 'Greeter = 
     GreetOutput String deriving (Show)
   process _ (store :: Store keys) =
     case sing
@@ -143,7 +143,7 @@ Its logic is as follows:
 In short, \hask{Greeter} involves fallback strategy on fields in the input store.
 This strategy is formulated as a \hask{Greetable} constraint; first try to inspect the exsitence of the label \hask{PStore Greeter}, and then fallback to the condition on the existence of \hask{PStore}.
 This fallback strategy can be seeen as an amalgamation of methods presented in \Cref{sec:gcd,sec:disj}, giving another way to emulate disjunction of constraints\footnote{%
-In this case, however, it woud suffice to require both \hask{Known (FindIndex (PStore Greeter) keys)} and \hask{Known (FindIndex NameStore keys)} would suffice. However, in more practical and perforfmance-critical applications, precise handling of disjunctive constraints is crucial.}.
+In this case, however, it woud suffice to require both \hask{Known (FindIndex (PStore Greeter) keys)} and \hask{Known (FindIndex NameStore keys)} would suffice. However, in more complex case, it saves compilation time to use such fallback strategies.}.
 
 Let's see some examples:
 \begin{repl}
@@ -175,15 +175,14 @@ OK, let's implement a dynamic variant of \hask{processStore}.
 In particular, we will make the resolution of \hask{Runnable} constraints dynamic, implementing the following function:
 
 \begin{code}
-processStoreDynamic
-  :: Known keys
+processStoreDynamic :: Known keys
   => Store keys -> [Plugin]
   -> Either String 
-    (SomeRecord (RunsWith keys) PluginOutput)
+    (SomeRec (RunsOn keys) POutput)
 
-data SomeRecord c f where
-  MkSomeRecord :: All c keys => Sing keys
-    -> Record f keys -> SomeRecord c f
+data SomeRec c f where
+  MkSomeRec :: All c keys => Sing keys
+    -> Record f keys -> SomeRec c f
 \end{code}
 
 One nontrivial challenge here is to resolve constraints of form \hask{Runnable} at \emph{runtime}, not \emph{compile-time}.
@@ -223,7 +222,7 @@ we can implement \hask{DynamicPlugin 'Doubler} as follows:
 instance DynamicPlugin 'Doubler where
   deferDynamicPlugin _ (_ :: Proxy keys) act =
   case sFindIndex SIntStore $ sing @keys of
-    SNothing -> Left "Doubler requries IntStore key"
+    SNothing -> Left "IntStore not found"
     SJust v -> withKnown v $ Right act
 \end{code}
 We can likewise implement the instance for \hask{Greeter}:
@@ -238,7 +237,7 @@ instance DynamicPlugin 'Greeter where
     where keys = sing @keys
 \end{code}
 
-\subsubsection{Three representations of type-level equality}
+\subsubsection{The type-level equality strikes back!}
 Hence, it remains to implement the \hask{sFindIndex} function, the singletonised version of type-level \hask{FindIndex}.
 Recall our current implementation of \hask{FindIndex}:
 \begin{code}
@@ -265,29 +264,64 @@ type family FindIndexAux eql k rest where
   FindIndexAux 'False k ks = 
     'There <$> FindIndex k ks
 \end{code}
+OK, now we can implement \hask{sFindIndex}:
+\begin{code}
+sFindIndex :: TestEquality (Sing @a)
+  => Sing (k :: a) -> SList keys
+  -> SMaybe (FindIndex k keys)
+sFindIndex _ SNil = SNothing
+sFindIndex k (SCons k ks') =
+  case k %=== k' of
+    STrue -> SJust SHere
+    SFalse -> SThere %<$> sFindIndex k ks
+\end{code}
+...Well, not quite:
+\begin{repl}
+• Could not deduce: 
+    FindIndexAux k x xs 'True ~ 'Just a0
+  Expected type: SMaybe (FindIndex k keys1)
+    Actual type: SMaybe ('Just a0)
+  The type variable ‘a0’ is ambiguous
+• In the expression: SJust SHere
+  In a case alternative: STrue -> SJust SHere
+\end{repl}
+We expected \hask{a} to be \hask{Here :: Index k (k ': ks)}, but here it becomes ambiguous type variable. Why?
+In the \hask{'True}-branch of \hask{FindIndexAux}, it returns \hask{Here}.
+Recall that \hask{Here} has the following type:
+\begin{code}
+  Here :: Index k (k ': ks)
+\end{code}
+This is equivalent to:
+\begin{code}
+  Here :: k ~ k' => Index k (k' ': ks)
+\end{code}
+This tells us the reason why we got stuck: in \hask{STrue}-branch, GHC knows that \hask{(k === x) ~ 'True}, but GHC cannot infer \hask{k ~ x} from it!
 
-\subsection{Notes on Equality}
-At this point, we have three type-level (homogeneous) equalities:
+To avoid such loss of equality information, it is convenient to pack all extensionally, but not definitionally, equivalent constraints.
+Recall we have three type-level (homogeneous) equalities:
 \begin{enumerate}
-\item Built-in equality constraint \hask{a ~ b},
-\item Boolean equality \hask{a == b}, which plays well with compound types, and
-\item Boolean equality \hask{a === b}, which takes only the reflexivity into account.
+\item \hask{a ~ b}, the built-in equality constraint,
+\item \hask{a == b}, a type-level boolean predicate predicate which plays well with compound types but lacks automatic reflexivity, and
+\item \hask{a === b}, a type-level boolean predicate which takes only the reflexivity into account.
 \end{enumerate}
-These three equalities can play their roles case-by-case, although their extension must coincide.
+These three equalities can play their roles case-by-case, although their extensions must coincide.
 Hence, it is convenient to pack all these (non-)equalities into a single witness:
 
 \begin{code}
 data Equality a b where
-  Equal :: ((a == b) ~ 'True, a ~ b, (a === b) ~ 'True) => Equality a b
+  Equal :: 
+    ((a == b) ~ 'True, 
+     (a === b) ~ 'True, a ~ b) => Equality a b
   NonEqual
-    :: ((a === b) ~ 'False, (a == b) ~ 'False) => Equality a b
+    :: ((a === b) ~ 'False, 
+        (a == b) ~ 'False) => Equality a b
 \end{code}
 
 As expressed by the constructor names, here \hask{Equal} witnesses the equality of given two types, and \hask{NonEqual} witnesses \emph{non}-equality.
 In this way, \hask{Equality} packages both \emph{positive} (equal) and \emph{negative} (non-equal) witnesses.
 
 One might wonder why we didn't mention equality \emph{constraint} \hask{a ~ b} in \hask{NonEqual}-case.
-This is because GHC can infer that \hask{a :~: b} is not inhabited from the fact that \hask{(a === b) ~ 'False}:
+This is because GHC can infer that \hask{a :~: b} is not inhabited from \hask{(a === b) ~ 'False}:
 
 \begin{code}
 {-# LANGUAGE EmptyCase, LambdaCase #-}
@@ -296,7 +330,115 @@ fromFalseEq :: (a === b) ~ 'False => a :~: b -> Void
 fromFalseEq = \case {}
 \end{code}
 
-FIXME: coercion arguments has no runtime representation and {\hask{NonEqual}} and {\hask{Equal}} can be treated just as nullary constructors and hence we can treat type parameters {\hask{a}} and {\hask{b}} in {\hask{Equality a b}} as if they are phantom.
+To allow equality test with \hask{Equality} witnesses, we use the following class:
+\begin{code}
+class SEqual k where
+  (%~) :: Sing (a :: k) -> Sing b -> Equality a b
+\end{code}
+Some expertised reader might realised that this looks similar to \hask{SDecide} class in \texttt{singletons} package~\cite{singletons}.
+The difference is non-equal cases: \hask{(%~)}
+in \hask{SDecide} returns \hask{a :~: b -> Void} in non-equal case.
+This design decision works well if one only do with \hask{(~)}; however, we cannot derive \hask{(a == b) ~ 'False} or \hask{(a === b) ~ 'False} by the very same reason why we cannot use \hask{(%===)}
+in the definition of \hask{sFindIndex}.
 
+Anyway, since those three equalities coincides extensionally, we can derive instance definitions of \hask{SEqual} from either \hask{TestEquality} (from \texttt{base}) or \hask{SDecide}.
+One can of course directly implement \hask{SEqual} by pattern matching.
+For example:
+\begin{code}
+instance SEqual Plugin where
+  SDoubler %~ SDoubler = Equal
+  SDoubler %~ SGreeter = NonEqual
+  SGreeter %~ SGreeter = Equal
+  SGreeter %~ SDoubler = NonEqual
+\end{code}
+And for \hask{StoreKey}:
+\begin{code}
+instance SEqual StoreKey where
+  SIntStore %~ SIntStore = Equal
+  SIntStore %~ SNameStore = NonEqual
+  SIntStore %~ SPStore {} = NonEqual
+  -- ... Similar for SNameStore %~ x ...
+  SPStore p %~ SPStore q =
+    case p %~ q of
+      Equal -> Equal
+      NonEqual -> nestNonEqual
+  SPStore {} %~ SIntStore = NonEqual
+  SPStore {} %~ SNameStore = NonEqual
+\end{code}
+Here, \hask{nestNonEqual} is given by:
+\begin{code}
+nestNonEqual :: (a == b) ~ 'False => Equality a b
+nestNonEqual = unsafeCoerce $ NonEqual @0 @1
+\end{code}
+The reason we cannot use \hask{NonEqual} in the \hask{SPStore}-case is that, as state before, \hask{(===)} won't inspect inside compund types.
+On the other hand, \hask{(==)} from \texttt{base} takes nested case into account, we can call combinator \hask{nestNonEqual} here.
+By constrainting with \hask{(a == b) ~ 'False}, \hask{nestNonEqual} tries to reject illegal usages as much as possible\footnote{Aside semantic correctness, the use of \hask{unsafeCoerce} here is completely memory-safe even without any constraints. This is because coercion arguments has no runtime representation in GHC. Therefore, {\hask{NonEqual}} and {\hask{Equal}} can be treated just as if they are nullary constructors and hence we can treat type parameters {\hask{a}} and {\hask{b}} in {\hask{Equality a b}} as if they are phantom.}.
+
+With \hask{SEqual} above, we can now implement \hask{sFindIndex}:
+\begin{code}
+sFindIndex :: SEqual a => Sing (k :: a)
+  -> SList keys -> SMaybe (FindIndex k keys)
+sFindIndex _ SNil = SNothing
+sFindIndex k (SCons k' ks) =
+  case k %~ k' of
+    Equal -> SJust SHere
+    NonEqual -> SThere %<$> sFindIndex k ks
+\end{code}
+
+As this filled the last gap, we can now implement our last goal \hask{processStoreDynamic} as listed in \Cref{lst:proc-dyn}.
+\begin{listing}[htbp]
+\begin{code}
+data PluginsOn keys where
+  MkSomePlugins :: All (RunsOn keys) ps
+    => SPlugins ps -> PluginsOn keys
+
+toSomeDyns :: forall keys. Known keys
+  => [Plugin] -> Either String (PluginsOn keys)
+toSomeDyns [] = pure $ MkSomePlugins SNil
+toSomeDyns (p : rest) = do
+  MkSomePlugins ps <- toSomeDyns @keys rest
+  withPromoted p $ \case
+    SDoubler ->
+      deferDynamicPlugin
+        (Proxy @ 'Doubler)
+        (Proxy @keys)
+        (MkSomePlugins $ SCons SDoubler ps)
+    SGreeter ->
+      deferDynamicPlugin
+        (Proxy @ 'Greeter)
+        (Proxy @keys)
+        (MkSomePlugins $ SCons SGreeter ps)
+
+processStoreDynamic ::
+  forall keys.
+  Known keys =>
+  Store keys ->
+  [Plugin] ->
+  Either String (SomeRec (RunsOn keys) POutput)
+processStoreDynamic store ps = do
+  MkSomePlugins (sps :: SPlugins ps) 
+    <- toSomeDyns @keys ps
+  pure $ MkSomeRec sps $ processStore store sps
+\end{code}
+\caption{The implementation of \texttt{processStoreDynamic}}
+\label{lst:proc-dyn}
+\end{listing}
+Now, we can test \hask{processDynamic}:
+\begin{repl}
+>>> processStoreDynamic
+      (MkStoreEntry @NameStore "Superman"
+        :< MkStoreEntry @IntStore 42
+        :< EmptyRecord)
+      [Doubler, Greeter] -- Note that it is value!
+Right (OutputA 84
+  :< GreetOutput "Hi, Superman, from Greeter!"
+  :< EmptyRecord)
+
+>>> processStoreDynamic
+      (MkStoreEntry @NameStore "anonymous"
+        :< EmptyRecord) 
+      [Doubler]
+Left "Doubler requries IntStore key"
+\end{repl}
 
 \end{document}
