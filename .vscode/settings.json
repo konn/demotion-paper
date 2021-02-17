@@ -32,7 +32,7 @@
     "renderMode": "latex"
   },
   "catex.environment.dictionary": [
-    "defaults/environments.json",
+    {"include": "defaults/environments.json"},
     {
       "name": "tikzpicture",
       "args": [
