@@ -147,6 +147,33 @@ Key `'IntStore' is absent in the list: '[ 'NameStore]
 GreetOutput "Hi, Hi, Hi, You, from me!" :< EmptyRecord
 \end{repl}
 
+\subsection{Make it dynamic}
+OK, let's implement a dynamic variant of \hask{processStore}.
+In particular, we will make the resolution of \hask{Runnable} constraints dynamic, implementing the following function:
+
+\begin{code}
+processStoreDynamic
+  :: Known keys
+  => Store keys -> [Plugin]
+  -> Either String (SomeRecord (RunsWith keys) PluginOutput)
+\end{code}
+
+One nontrivial challenge here is to resolve constraints of form \hask{Runnable} at \emph{runtime}, not \emph{compile-time}.
+Fortunately, there is a well-known design pattern to allow such instance resolutions at runtime: the \emph{deferrable constraint} pattern:
+\begin{code}
+class Deferrable p where
+  deferEither :: proxy p -> (p => r) -> Either String r
+\end{code}
+This is provided in the module \hask{Data.Constraint.Deferrable} in \texttt{constraints} package~\cite{Kmett:2020ab}, and it was first proposed by Dimitrios Vytiniotis\footnote{The author couldn't find the original reference proposing this pattern; pointers welcome!}.
+Unfortunately, we cannot write instances of \hask{Deferrable (Runnable p keys)} in general, as \hask{Runnable} is a \emph{type family} and not a \emph{class constructor}.
+Instead, we provide the dedicated class \hask{DynamicPlugin} of plugins which allow the deferral of corresponding \hask{Runnable}s:
+\begin{code}
+class IsPlugin p => DynamicPlugin p where
+  deferDynamicPlugin
+    :: Known keys
+    => pxy p -> Proxy keys -> (Runnable p keys => r) -> Either String r
+\end{code}
+
 % FIXME: Words on sFindIndex
 % Well, not quite.
 % If one wants to implement singletonised version \hask{sFindIndex} of \hask{FindIndex}, we must apply the methods described in \Cref{sec:gcd} to make clear which branch is taken:
