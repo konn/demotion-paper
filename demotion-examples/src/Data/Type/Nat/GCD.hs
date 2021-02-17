@@ -14,7 +14,7 @@ module Data.Type.Nat.GCD where
 
 import Data.Type.Bool (type (&&))
 import Data.Type.Equality (TestEquality, testEquality, (:~:) (Refl), type (==))
-import Data.Type.Natural (SBool (SFalse, STrue), SNat, sMod, sNat)
+import Data.Type.Natural (SBool (SFalse, STrue), SNat, sMod, sNat, type (===))
 import Data.Void
 import GHC.TypeNats (Mod, Nat)
 import Unsafe.Coerce (unsafeCoerce)
@@ -55,10 +55,6 @@ fromFalse = \case
 --   :: forall k (n :: k) (m :: k).
 --      (Empty (n :~: m), (n === m) ~ 'False, (n == m) ~ 'False) =>
 --      Equality n m
-
-type family a === b where
-  a === a = 'True
-  _ === _ = 'False
 
 data TypeFlavour = IsCompound | IsSimple
   deriving (Read, Show, Eq, Ord)
