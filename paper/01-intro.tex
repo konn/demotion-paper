@@ -20,8 +20,18 @@ type family Sing :: k -> Type
 
 class Known a where
   sing :: Sing a
-
 withKnown :: Sing a -> (Known a => r) -> r
+
+data SomeSing k where
+  MkSomeSing :: Sing (a :: k) -> SomeSing k
+class HasSing k where
+  type Demoted k 
+  demote :: Sing (a :: k) -> Demoted k
+  promote :: Demoted k -> SomeSing k
+
+withPromoted :: HasSing k
+  => Demoted k
+  -> (forall x. Sing (x :: k) -> r) -> r
 
 type FromJust :: ErrorMessage -> Maybe a -> a
 type family FromJust err may where 
