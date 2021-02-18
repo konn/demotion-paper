@@ -12,9 +12,14 @@ It tells us that types are propositions and programs are proofs in intuitionisti
 According to Brouwer--Heyting--Kolmogorov (BHK) interpretation\footnote{For the precise historical background, we refer readers to the article by Wadler~\cite{Wadler:2015aa}}, its informal ancestor, a proof of an intuitionistic proposition is some kind of a construction, or \emph{witness}, conveying the information of the proposition.
 For example, proof of $\varphi \land \psi$ is given by the pair of proofs $T: \varphi$ and $S: \psi$; $\varphi \to \psi$ is given by a function taking a proof of $P$ and returns $Q$, ---and so on.
 The interpretation of our particular interest in this paper is that of disjunction:
-\begin{quote}
-  A proof $T: P \vee Q$ is given by $\braket{i, S}$, where either $i = 0$ and $S: \varphi$ or $i = 1$ and $S: \psi$ holds.
-\end{quote}
+\begin{gather*}
+  A: \varphi \vee \psi \iff A = \braket{i, B},
+\\
+\text{where }
+i = 0 \text{ and } B: \varphi, \text{ or }
+i = 1 \text{ and } B: \psi
+\end{gather*}
+That is, a witness of disjunction is given by a tuple of the tag recording which case holds and its corresponding witness.
 Although BHK interpretation is not as rigorous as Curry--Howard correspondence, its looseness allows us much broader interpretation.
 
 This paper is organised as follows.
