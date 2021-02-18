@@ -3,10 +3,7 @@
 \begin{document}
 \section{Toy Example: Demoting Type-level GCD}
 \label{sec:gcd}
-Let's begin with a simple example of type-level greatest common divisors (GCDs).
-It is quite simple as all we have to do is just to implement Euclidean algorithm:
-
-% TODO: Clarify the API and libraries we use
+Let us begin with a simple example of type-level greatest common divisors (GCDs):
 
 \begin{code}
 import GHC.TypeLits
@@ -17,7 +14,7 @@ type family GCD n m where
   GCD n m = GCD (Mod m n) n
 \end{code}
 
-So far so good.
+So far, so good.
 
 \begin{repl}
 >>> :kind! GCD 12 9
@@ -46,7 +43,7 @@ sGCD sn sm =
     (Nothing, Nothing) -> sGCD (sMod sm sn) sn
 \end{code}
 
-First two lines type-checks as expected, but the last case results in the following type error:
+The first two lines type-checks as expected, but the last case results in the following type error:
 
 \begin{repl}
 • Couldn't match type ‘GCD (Mod m n) n’
@@ -60,7 +57,7 @@ First two lines type-checks as expected, but the last case results in the follow
 Why? The definition of \hask{sGCD} seems almost literally the same as type-level \hask{GCD}.
 It first match \hask{n} against \hask{0}, then \hask{m} against \hask{0}, and finally fallbacks to \hask{GCD (Mod m n) n}.
 
-Carefully analysing first two cases, one can realise that there are additional type-level constraint introduced by \hask{Refl} GADT constructor:
+Carefully analysing first two cases, one can realise that there are additional type-level constraints introduced by \hask{Refl} GADT constructor:
 
 \begin{code}
 data (:~:) a b where
@@ -78,7 +75,7 @@ So we have to give compiler some \emph{witness} to convince them.
 What kind of witness is needed here?
 Well, we need to teach the compiler which clause of the definition was actually used.
 In this case, branching is caused by type-level equality: the evaluation path depends on whether \hask{n} or \hask{m} is \hask{0} or not.
-First, let's make this intuition clear in the definition of \hask{GCD}:
+First, let us make this intuition clear in the definition of \hask{GCD}:
 
 \begin{code}
 import Data.Type.Equality (type (==)) -- from base
@@ -91,9 +88,9 @@ type family GCD_ nEq0 mEq0 n m :: Nat where
     GCD_ (Mod m n == 0) 'False (Mod m n) n
 \end{code}
 
-Here, we have two type-level functions: newly defined one, \hask{GCD_}, is a main loop implementing Euclidean algorithm.
+Here, we have two type-level functions: newly defined one, \hask{GCD_}, is the main loop implementing Euclidean algorithm.
 Now, \hask{GCD_} takes not only natural numbers to calculate \hask{GCD}, but also type-level \hask{Bool}ean-values that record equality of \hask{n} and \hask{m} with \hask{0}.
-From this, GHC can tell exactly which clause is taken from the first two type-arguments.
+From this, GHC can tell which clause is taken from the first two type-arguments.
 Then, the redefined type synonym \hask{GCD} just calls \hask{GCD_} with the needed information.
 
 Now that we can give the compiler witnesses as the first two type-arguments of \hask{GCD_}, we are set to implement \hask{sGCD}.
@@ -158,7 +155,7 @@ sa %=== sb = case testEquality sa sb of
 
 Now, the type-error remains on the last clause: \hask{SFalse}.
 This is also due to the lack of witness of being distinct.
-But, wait! We are just struggling to produce such negative witnesses of non-equality, which in turn requires itself. A vicious cycle!
+But wait! We are just struggling to produce such a negative witnesses of non-equality, which in turn requires itself. A vicious cycle!
 
 At this very point, there is no other way than resorting to the ancient cursed spell: \hask{unsafeCoerce}:
 
@@ -171,9 +168,9 @@ sa %=== sb = case testEquality sa sb of
 \end{code}
 
 This use of \hask{unsafeCoerce} is inherently inevitable.
-Fortunately, provided that \hask{TestEquality} instance is implemented soundly, this use of \hask{unsafeCoerce} is not cursed: this is just postulating an axiom that is true but there is no way to tell it to the compiler safely\footnote{Of course, one must pay attension whether coerced values have the same representation. In this case, it is legitimate useage.}.
+Fortunately, provided that \hask{TestEquality} instance is implemented soundly, this use of \hask{unsafeCoerce} is not cursed: this is just postulating an axiom that is true but there is no way to tell it to the compiler safely.
 If one wants to construct evidence of type-level (non-)equality solely from the expression, we must assume some axiom and introduce it by \hask{unsafeCoerce}.
-This is how the library builder usually do when they implement basic (expression-level) operators to manipulate type-level values.
+This is how library builders usually do when they implement basic (expression-level) operators to manipulate type-level values.
 Such ``trust me'' axioms can be found, for example, in \hask{TestEquality TypeRep} instance in \texttt{base}, and various \hask{SEq} instances in \texttt{singletons}~\cite{singletons} package.
 
 Anyway, we are finally at the point of implementing working \hask{sGCD}, replacing every occurrence of \hask{(==)} with our custom \hask{(===)}:
