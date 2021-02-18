@@ -325,10 +325,10 @@ This is because GHC can infer that \hask{a :~: b} is not inhabited from \hask{(a
 \begin{code}
 {-# LANGUAGE EmptyCase, LambdaCase #-}
 import Data.Void
-fromFalseEq :: (a === b) ~ 'False => a :~: b -> Void
+fromFalseEq
+  :: (a === b) ~ 'False => a :~: b -> Void
 fromFalseEq = \case {}
 \end{code}
-
 To allow equality test with \hask{Equality} witnesses, we use the following class:
 \begin{code}
 class SEqual k where
@@ -363,15 +363,13 @@ instance SEqual StoreKey where
       NonEqual -> nestNonEqual
   SPStore {} %~ SIntStore = NonEqual
   SPStore {} %~ SNameStore = NonEqual
-\end{code}
-Here, \hask{nestNonEqual} is given by:
-\begin{code}
+
 nestNonEqual :: (a == b) ~ 'False => Equality a b
 nestNonEqual = unsafeCoerce $ NonEqual @0 @1
 \end{code}
 The reason we cannot use \hask{NonEqual} in the \hask{SPStore}-case is that, as state before, \hask{(===)} won't inspect inside compund types.
 On the other hand, \hask{(==)} from \texttt{base} takes nested case into account, we can call combinator \hask{nestNonEqual} here.
-By constrainting with \hask{(a == b) ~ 'False}, \hask{nestNonEqual} tries to reject illegal usages as much as possible\footnote{Aside semantic correctness, the use of \hask{unsafeCoerce} here is completely memory-safe even without any constraints. This is because coercion arguments has no runtime representation in GHC. Therefore, {\hask{NonEqual}} and {\hask{Equal}} can be treated just as if they are nullary constructors and hence we can treat type parameters {\hask{a}} and {\hask{b}} in {\hask{Equality a b}} as if they are phantom.}.
+By constrainting with \hask{(a == b) ~ 'False}, \hask{nestNonEqual} tries to reject illegal usages as much as possible\footnote{Aside semantics, the use of \hask{unsafeCoerce} here is memory-safe, even without any constraints. This is because coercion arguments has no runtime representation. Therefore, constructors can be treated just as if they are nullary and hence we can treat type parameters as if they are phantom.}.
 
 With \hask{SEqual} above, we can now implement \hask{sFindIndex}:
 \begin{code}

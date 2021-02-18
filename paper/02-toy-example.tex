@@ -73,7 +73,7 @@ Despite humans can still think ``as all the \hask{Refl} clauses failed to match,
 
 So we have to give compiler some \emph{witness} to convince them.
 What kind of witness is needed here?
-Well, we need to teach the compiler which clause of the definition was actually used.
+Well, we need to teach the compiler which clause was actually used.
 In this case, branching is caused by type-level equality: the evaluation path depends on whether \hask{n} or \hask{m} is \hask{0} or not.
 First, let us make this intuition clear in the definition of \hask{GCD}:
 
@@ -88,13 +88,13 @@ type family GCD_ nEq0 mEq0 n m :: Nat where
     GCD_ (Mod m n == 0) 'False (Mod m n) n
 \end{code}
 
-Here, we have two type-level functions: newly defined one, \hask{GCD_}, is the main loop implementing Euclidean algorithm.
-Now, \hask{GCD_} takes not only natural numbers to calculate \hask{GCD}, but also type-level \hask{Bool}ean-values that record equality of \hask{n} and \hask{m} with \hask{0}.
+Here, we have two type-level functions: newly defined one, \hask{GCD_}, is the main loop implementing Euclidean algorithm, and
+\hask{GCD} is redefined to call \hask{GCD_} with the needed information.
+Now, \hask{GCD_} takes not only natural numbers but also a type-level \hask{Bool}ean-values \emph{witnessing} equality of \hask{n} and \hask{m} with \hask{0}.
 From this, GHC can tell which clause is taken from the first two type-arguments.
-Then, the redefined type synonym \hask{GCD} just calls \hask{GCD_} with the needed information.
+As clauses in closed type families can be viewed as a mutually exclusive disjunction, this approach shares the spirit with the constructive interpretation of $\vee$.
 
 Now that we can give the compiler witnesses as the first two type-arguments of \hask{GCD_}, we are set to implement \hask{sGCD}.
-
 First, we need \emph{demoted} version of type-level \hask{(==)}.
 The first attempt might go as follows:
 \begin{code}

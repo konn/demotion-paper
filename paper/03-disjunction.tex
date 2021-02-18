@@ -163,7 +163,7 @@ The error seems weird at first glance: we are just giving the \hask{Known} dicti
 The root cause of this error is that the type-checker doesn't know the following facts:
 \begin{enumerate}
   \item \hask{FromJust ('Text ...)} commutes with \hask{(<|>)}, and
-  \item If \hask{FromJust msg ma} reduces, then \hask{ma ~ 'Just (FromJust msg' ma)} for any \hask{msg'}.
+  \item If \hask{FromJust x m} reduces, then \hask{m ~ 'Just (FromJust z m)} for any \hask{z}.
 \end{enumerate}
 Although these two facts seem rather obvious, it needs some non-trivial axioms to infer.
 Hence, if we want to convince the compiler without modifying the instance definitions, we have to augment the compiler with type-checker plugins~\cite{GHC-Team:2020aa}.
