@@ -36,6 +36,7 @@ This paper is organised as follows.
 
 \subsection{Preliminaries}
 Throughout this paper, we use the standard method of \emph{singleton}~\cite{Eisenberg:2012} to simulate dependent types in Haskell.
+Briefly speaking, a singleton type \hask{Sing a} of a expression-level value \hask{a} is a unique type that has the same structure as \hask{a}, on which we can pattern-match to retrieve the exact shape of it. \hask{Sing a} can be identified with \hask{a} but promoted to type-level.
 In particular, we assume the following API\footnote{A working implementation is available at \texttt{https://github.com/XXXXX} (made available after blind reviews; for now, we provide the identical contents as the supplementary tarball.)}:
 
 \begin{code}
