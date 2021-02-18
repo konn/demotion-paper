@@ -1,12 +1,49 @@
 %% This BibTeX bibliography file was created using BibDesk.
 %% https://bibdesk.sourceforge.io/
 
-%% Created for 石井大海 at 2021-02-18 01:49:24 +0900 
+%% Created for 石井大海 at 2021-02-18 21:41:24 +0900 
 
 
 %% Saved with string encoding Unicode (UTF-8) 
 
 
+
+@inproceedings{Noonan:2018aa,
+	abstract = {Library authors often are faced with a design choice: should a function with preconditions be implemented as a partial function, or by returning a failure condition on incorrect use? Neither option is ideal. Partial functions lead to frustrating run-time errors. Failure conditions must be checked at the use-site, placing an unfair tax on the users who have ensured that the function's preconditions were correctly met.  In this paper, we introduce an API design concept called ``ghosts of departed proofs'' based on the following observation: sophisticated preconditions can be encoded in Haskell's type system with no run-time overhead, by using proofs that inhabit phantom type parameters attached to newtype wrappers. The user expresses correctness arguments by constructing proofs to inhabit these phantom types. Critically, this technique allows the library user to decide when and how to validate that the API's preconditions are met.  The ``ghosts of departed proofs'' approach to API design can achieve many of the benefits of dependent types and refinement types, yet only requires some minor and well-understood extensions to Haskell 2010. We demonstrate the utility of this approach through a series of case studies, showing how to enforce novel invariants for lists, maps, graphs, shared memory regions, and more.},
+	address = {New York, NY, USA},
+	author = {Noonan, Matt},
+	booktitle = {Proceedings of the 11th ACM SIGPLAN International Symposium on Haskell},
+	date-added = {2021-02-18 21:02:45 +0900},
+	date-modified = {2021-02-18 21:02:54 +0900},
+	doi = {10.1145/3242744.3242755},
+	isbn = {9781450358354},
+	keywords = {software engineering, formal methods, higher-rank types, API design},
+	location = {St. Louis, MO, USA},
+	numpages = {13},
+	pages = {119--131},
+	publisher = {Association for Computing Machinery},
+	series = {Haskell 2018},
+	title = {Ghosts of Departed Proofs (Functional Pearl)},
+	url = {https://doi.org/10.1145/3242744.3242755},
+	year = {2018},
+	Bdsk-Url-1 = {https://doi.org/10.1145/3242744.3242755}}
+
+@inbook{Kiselyov:2010aa,
+	abstract = {Tony Hoare has always been a leader in writing down and proving properties of programs. To prove properties of programs automatically, the most widely used technology today is the ubiquitous type checker. Alas, static type systems inevitably exclude some good programs and allow some bad ones. Thus motivated, we describe some fun we have been having with Haskell, by making the type system more expressive without losing the benefits of automatic proof and compact expression. Specifically, we offer a programmer's tour of so-calledtype families, a recent extension to Haskell that allows functions on types to be expressed as straightforwardly as functions on values. This facility makes it easier for programmers to effectively extend the compiler by writing functional programs that execute during type checking. Source code for all the examples is available at http://research.microsoft.com/simonpj/papers/assoc-types/fun-with-type-funs.zip.},
+	address = {London},
+	author = {Kiselyov, Oleg and Jones, Simon Peyton and Shan, Chung-chieh},
+	booktitle = {Reflections on the Work of C.A.R. Hoare},
+	date-added = {2021-02-18 20:19:43 +0900},
+	date-modified = {2021-02-18 21:41:23 +0900},
+	doi = {10.1007/978-1-84882-912-1_14},
+	editor = {Roscoe, A.W. and Jones, Cliff B. and Wood, Kenneth R.},
+	isbn = {978-1-84882-912-1},
+	pages = {301--331},
+	publisher = {Springer London},
+	title = {Fun with Type Functions},
+	url = {https://doi.org/10.1007/978-1-84882-912-1_14},
+	year = {2010},
+	Bdsk-Url-1 = {https://doi.org/10.1007/978-1-84882-912-1_14}}
 
 @article{Wadler:2015aa,
 	abstract = {Connecting mathematical logic and computation, it ensures that some aspects of programming are absolute.},
