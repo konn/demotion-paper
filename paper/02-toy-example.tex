@@ -199,4 +199,8 @@ We can confirm that the above \hask{sGCD} works just as expected:
 6
 \end{repl}
 
+\subsection{Summary}
+When writing a closed type-family involving pattern-matchings, it is useful to introduce arguments witnessing evaluation paths explicitly, interpreting clauses in a closed family as mutually exclusive alternatives.
+It makes it easy to write its demoted singletonised functions.
+As there are several variants of type-level equality; in this case it is convenient to use the type-level Boolean equality which takes only reflexivity into account.
 \end{document}
