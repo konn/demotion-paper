@@ -335,9 +335,9 @@ class SEqual k where
   (%~) :: Sing (a :: k) -> Sing b -> Equality a b
 \end{code}
 Some expertised reader might realised that this looks similar to \hask{SDecide} class in \texttt{singletons} package~\cite{singletons}.
-The difference is non-equal cases: \hask{(%~)}
+The difference is non-equal cases: \haskinline{(%~)}
 in \hask{SDecide} returns \hask{a :~: b -> Void} in non-equal case.
-This design decision works well if one only do with \hask{(~)}; however, we cannot derive \hask{(a == b) ~ 'False} or \hask{(a === b) ~ 'False} by the very same reason why we cannot use \hask{(%===)}
+This design decision works well if one only do with \hask{(~)}; however, we cannot derive \hask{(a == b) ~ 'False} or \hask{(a === b) ~ 'False} by the very same reason why we cannot use \haskinline{(%===)}
 in the definition of \hask{sFindIndex}.
 
 Anyway, since those three equalities coincides extensionally, we can derive instance definitions of \hask{SEqual} from either \hask{TestEquality} (from \texttt{base}) or \hask{SDecide}.
