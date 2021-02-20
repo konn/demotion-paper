@@ -254,13 +254,9 @@ A field of type `999' not found in either:
 
 \subsection{Summary}
 We saw that we could emulate a disjunction of type constraints if the constraints in question have \emph{witnessing} type, and there is a canonical way of statically computing such witnesses at type-level.
-In the above example, \hask{Member k ks} and \hask{HasFactor (h a) (RecUnion h ls rs)} are such constraints, witnessed by \hask{Index k ks} and \hask{IndexUnion k ls rs}, and such witnesses can be computed by \hask{FindIndex'} and \hask{UnionedIndex'}, respectively.
-
-One pitfall in expressing ``there is a witness'' in type-level is to misuse \hask{Known} (or \hask{SingI} in \texttt{singletons} package~\cite{singletons}) for canonical type-level witness constructor; e.g.\ demanding \hask{Known (FindIndex' k ks)} in \hask{Member k ks}.
-Instead, we must use \hask{Given} class to allow flexible manipulation of witnesses.
+In expressing the existence of witnesses, it allows much precise and robust handling to use the \hask{Given} class.
 Especially, this makes it easy to give ``fallback'' witness when canonical witness constructor can fail.
-
-Although we treated only extensible records here, we can apply the same technique to more general settings.
-We refer curious readers to \texttt{Data.Type.Path} module in the accompanying Supplementary material. 
+Although we treated only extensible records here, we can apply the same technique to more general settings;
+we refer curious readers to \texttt{Data.Type.Path} module in the accompanying Supplementary. 
 % TODO: Change to refer to GitHub repo after the review.
 \end{document}
