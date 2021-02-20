@@ -79,7 +79,7 @@ It processes \hask{Store} represented as an extensible record with labels of kin
 
 Let's see an actual implementations for plugins \hask{Doubler} and \hask{Greeter}.
 \hask{Doubler} (\Cref{lst:plugin-double}) is simple: it reas the value of \hask{IntStore}, returns the value multiplied by $2$.
-\begin{listing}[tbp]
+\begin{listing}[htbp]
 \begin{code}
 instance IsPlugin 'Doubler where
   data PStoreType 'Doubler = DoubleStore
@@ -96,7 +96,7 @@ As it requires the value associated with \hask{IntStore}, \hask{Runnable 'Double
 Hence, if there is no field with label \hask{IntStore}, it fails to type-check.
 
 Another example, \hask{Greeter}, in \Cref{lst:plugin-greet}, is much more complicated.
-\begin{listing}[tbp]
+\begin{listing}[htbp]
 \begin{code}
 type Greetable keys =
   ( Known (FindIndex ( 'PStore 'Greeter) keys)
@@ -382,7 +382,7 @@ sFindIndex k (SCons k' ks) =
 \end{code}
 
 As this filled the last gap, we can now implement our last goal \hask{processStoreDynamic} as listed in \Cref{lst:proc-dyn}.
-\begin{listing}[tbp]
+\begin{listing}[htbp]
 \begin{code}
 data PluginsOn keys where
   MkSomePlugins :: All (RunsOn keys) ps
@@ -419,6 +419,7 @@ processStoreDynamic store ps = do
 \caption{The implementation of \texttt{processStoreDynamic}}
 \label{lst:proc-dyn}
 \end{listing}
+
 Now, we can test \hask{processStoreDynamic}:
 \begin{repl}
 >>> processStoreDynamic
@@ -436,5 +437,4 @@ Right (OutputA 84
       [Doubler]
 Left "Doubler requries IntStore key"
 \end{repl}
-
 \end{document}
