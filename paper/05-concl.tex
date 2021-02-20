@@ -34,5 +34,5 @@ Although we didn't give a detailed analysis, the compilation performance matters
 In this context, there are many possibilities of exploration.
 For example, suppose we promote container types, such as trees, and provide basic construction as a type-function, rather than data-constructors.
 Then, as the current GHC doesn't come with ability of inlining type-level terms, it can take so much time to normalise such type-level constructions when the type appears for many times.
-In such cases, the compiler plugins~\cite{GHC-Team:2020aa} to expand type families at compile time can help to improve the compilation time; but this is only partial workaround and much investigation on such compilation efficiency must be taken.
+In such cases, the compiler plugins to expand type families at compile time can help to improve the compilation time; but this is only partial workaround and much investigation on such compilation efficiency must be taken.
 \end{document}
