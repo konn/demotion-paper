@@ -40,7 +40,7 @@ Before we get into the dynamic constraint resolution with witnesses, we first sk
 
 Our example system is designed using extensible records, which we developed in \Cref{sec:disj}.
 We present the entire program architecture in \Cref{lst:plugin-arch}.
-\begin{listing}[htbp]
+\begin{listing}[tbp]
 \begin{code}
 data Plugin = Doubler | Greeter
 data StoreKey = IntStore | NameStore
@@ -79,7 +79,7 @@ It processes \hask{Store} represented as an extensible record with labels of kin
 
 Let's see an actual implementations for plugins \hask{Doubler} and \hask{Greeter}.
 \hask{Doubler} (\Cref{lst:plugin-double}) is simple: it reas the value of \hask{IntStore}, returns the value multiplied by $2$.
-\begin{listing}[htbp]
+\begin{listing}[tbp]
 \begin{code}
 instance IsPlugin 'Doubler where
   data PStoreType 'Doubler = DoubleStore
@@ -96,7 +96,7 @@ As it requires the value associated with \hask{IntStore}, \hask{Runnable 'Double
 Hence, if there is no field with label \hask{IntStore}, it fails to type-check.
 
 Another example, \hask{Greeter}, in \Cref{lst:plugin-greet}, is much more complicated.
-\begin{listing}[htbp]
+\begin{listing}[tbp]
 \begin{code}
 type Greetable keys =
   ( Known (FindIndex ( 'PStore 'Greeter) keys)
@@ -382,7 +382,7 @@ sFindIndex k (SCons k' ks) =
 \end{code}
 
 As this filled the last gap, we can now implement our last goal \hask{processStoreDynamic} as listed in \Cref{lst:proc-dyn}.
-\begin{listing}[htbp]
+\begin{listing}[tbhp]
 \begin{code}
 data PluginsOn keys where
   MkSomePlugins :: All (RunsOn keys) ps
