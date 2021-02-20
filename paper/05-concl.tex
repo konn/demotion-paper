@@ -3,26 +3,26 @@
 \begin{document}
 \section{Conclusions}
 \label{sec:concl}
-We demonstrated how can we use the constructive point of view, which pays attention to \emph{witnesses}, as a useful guiding principle in designing embedded dependent type-systems in Haskell.
+We demonstrated how we can use the constructive point of view, paying attention to \emph{witnesses}, as a useful guiding principle in designing embedded dependent type-systems in Haskell.
 As a concrete example, we have demonstrated:
 \begin{enumerate}
   \item Type-level arguments \emph{witnessing} evaluation paths in a type-family enables us to safely write corresponding singletonised function much easier afterwards.
   \item Disjunctions of type constraints can be emulated if it is recoverable from \emph{witnesses} that is statically computable at type-level.
   \item Combining \emph{witness} manipulation and \hask{Deferrable} pattern, we can implement a dependently-typed plugin system, which can be dynamically type-checked at \emph{runtime}.
-  \item It is convenient to provide a unified witness type for extensionally equivalent, but not definitionally constraints; we discussed about type-level equalities as an example.
+  \item It is convenient to provide a unified witness type for extensionally equivalent, but not definitionally equivalent constraints; we discussed about type-level equalities as an example.
 \end{enumerate}
 To summarise, what we demonstrated in this paper is not a single \emph{method}, but a insightful way of thinking when one design methods in dependently type-level programming.
 
 \subsection{Related and future works}
 The examples of this paper incorporates many existing works on dependent types in Haskell: those include type-families~\cite{Kiselyov:2010aa}, data-type promotion~\cite{Yorgey:2012}, singletons~\cite{Eisenberg:2012}, Implicit Configuration~\cite{Kiselyov:2004aa}, to name a few.
 The Hasochism paper~\cite{10.1145/2503778.2503786} contains many examples of dependently-typed programming and obstacles in Haskel.
-We demonstrated how the consructive point of view is useful when we write dependently-typed codes incorporating these prominent methods.
+We demonstrated how useful the constructive point of view is when we write dependently-typed codes incorporating these prominent methods.
 There is a minor difference in the direction of interest, though.
-In the school of dependently-typed programming promotion in Haskell, the method to \emph{promote} functions and data-types is widely discussed~~\cite{Yorgey:2012,Eisenberg:2012,10.1145/2503778.2503786}.
-On the other hand, many of examples in the present paper arise when one tries to \emph{demote} type-level hacks down to expression-level.
+In dependently-typed programming in Haskell, the method to \emph{promote} functions and data-types is widely discussed~~\cite{Yorgey:2012,Eisenberg:2012,10.1145/2503778.2503786}.
+On the other hand, many of examples in the present paper arise when one tries to \emph{demote} type-level hacks down to the expression-level.
 Such needs of demotion arise when one wants to resolve dependently-typed constraints at runtime, as we saw in \Cref{sec:plugins}.
-The demotion-based approach has another advantage compared to the promotion-based one: macro codes for deriving definitions are much predictable in demotion.
-For example, in \texttt{singletons}~\cite{singletons} package, there are plenty of macro generated type-families with names with seemingly random suffixes.
+The demotion-based approach has another advantage compared to the promotion-based one: macro codes for deriving definitions are much predictable.
+For example, in \texttt{singletons}~\cite{singletons} package, there are plenty of macro-generated type-families with names with seemingly random suffixes.
 This makes, for example, writing type-checker plugins to work with generated functions rather cumbersome.
 
 Since the contribution of this paper is a general point of view, there are much room for exploration of a synergy with other methods utilising dependent types.
@@ -30,9 +30,9 @@ For example, the method of Ghosts of Departed Proofs~\cite{Noonan:2018aa} shares
 It suggests an aggressive use of phantom types to achieve various level of type-safety.
 It can be interesting to explore the synergy of such methods with our examples.
 
-Although we didn't give a detailed analysis, the compilation time matters much when one tries to apply involved type-level hacks in industry.
+Although we didn't give a detailed analysis, the compilation performance matters much when one tries to apply involved type-level hacks in the industry.
 In this context, there are many possibilities of exploration.
-For example, if we promote container types, such as trees, and provide basic construction as a type-function, rather than data-constructors.
+For example, suppose we promote container types, such as trees, and provide basic construction as a type-function, rather than data-constructors.
 Then, as the current GHC doesn't come with ability of inlining type-level terms, it can take so much time to normalise such type-level constructions when the type appears for many times.
 In such cases, the compiler plugins~\cite{GHC-Team:2020aa} to expand type families at compile time can help to improve the compilation time; but this is only partial workaround and much investigation on such compilation efficiency must be taken.
 \end{document}
