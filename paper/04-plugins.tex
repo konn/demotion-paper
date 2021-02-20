@@ -212,7 +212,7 @@ Recall its definition:
 type Runnable 'Doubler ks = Member 'IntStore ks
 \end{code}
 By definition, \hask{Member 'IntStore keys ~ Given (Index 'IntStore keys)} and the default implementation is resolved with the superclass constraint \hask{Known (FindIndex'  'IntStore keys)}.
-Hence, assuming
+Hence, assuming:
 \begin{code}
 sFindIndex :: Sing key -> SList keys
       -> SMaybe (FindIndex key keys)
@@ -221,9 +221,9 @@ we can implement \hask{DynamicPlugin 'Doubler} as follows:
 \begin{code}
 instance DynamicPlugin 'Doubler where
   deferDynamicPlugin _ (_ :: Proxy keys) act =
-  case sFindIndex SIntStore $ sing @keys of
-    SNothing -> Left "IntStore not found"
-    SJust v -> withKnown v $ Right act
+    case sFindIndex SIntStore $ sing @keys of
+      SNothing -> Left "IntStore not found"
+      SJust v -> withKnown v $ Right act
 \end{code}
 We can likewise implement the instance for \hask{Greeter}:
 \begin{code}
@@ -353,8 +353,7 @@ instance SEqual StoreKey where
   SIntStore %~ SNameStore = NonEqual
   SIntStore %~ SPStore {} = NonEqual
   -- ... Similar for SNameStore %~ x ...
-  SPStore p %~ SPStore q =
-    case p %~ q of
+  SPStore p %~ SPStore q = case p %~ q of
       Equal -> Equal
       NonEqual -> nestNonEqual
   SPStore {} %~ SIntStore = NonEqual
