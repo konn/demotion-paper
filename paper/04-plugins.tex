@@ -270,10 +270,9 @@ sFindIndex :: TestEquality (Sing @a)
   => Sing (k :: a) -> SList keys
   -> SMaybe (FindIndex k keys)
 sFindIndex _ SNil = SNothing
-sFindIndex k (SCons k ks') =
-  case k %=== k' of
-    STrue -> SJust SHere
-    SFalse -> SThere %<$> sFindIndex k ks
+sFindIndex k (SCons k ks') = case k %=== k' of
+  STrue -> SJust SHere
+  SFalse -> SThere %<$> sFindIndex k ks
 \end{code}
 ...Well, not quite:
 \begin{repl}
@@ -308,12 +307,10 @@ These three equalities can play their roles case-by-case, although their extensi
 So, it is useful to pack all these (non-)equalities into a single witness, as follows:
 \begin{code}
 data Equality a b where
-  Equal :: 
-    ((a == b) ~ 'True, 
-     (a === b) ~ 'True, a ~ b) => Equality a b
-  NonEqual
-    :: ((a === b) ~ 'False, 
-        (a == b) ~ 'False) => Equality a b
+  Equal :: ((a == b) ~ 'True, (a === b) ~ 'True,
+            a ~ b) => Equality a b
+  NonEqual :: ((a === b) ~ 'False, 
+              (a == b) ~ 'False) => Equality a b
 \end{code}
 As expressed by the constructor names, here \hask{Equal} witnesses the equality of given two types, and \hask{NonEqual} witnesses \emph{non}-equality.
 In this way, \hask{Equality} packages both \emph{positive} (equal) and \emph{negative} (non-equal) witnesses.
