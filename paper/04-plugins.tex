@@ -396,21 +396,16 @@ toSomeDyns (p : rest) = do
   withPromoted p $ \case
     SDoubler ->
       deferDynamicPlugin
-        (Proxy @ 'Doubler)
-        (Proxy @keys)
+        (Proxy @ 'Doubler) (Proxy @keys)
         (MkSomePlugins $ SCons SDoubler ps)
     SGreeter ->
       deferDynamicPlugin
-        (Proxy @ 'Greeter)
-        (Proxy @keys)
+        (Proxy @ 'Greeter) (Proxy @keys)
         (MkSomePlugins $ SCons SGreeter ps)
 
-processStoreDynamic ::
-  forall keys.
-  Known keys =>
-  Store keys ->
-  [Plugin] ->
-  Either String (SomeRec (RunsOn keys) POutput)
+processStoreDynamic :: forall keys. Known keys
+  => Store keys -> [Plugin]
+  -> Either String (SomeRec (RunsOn keys) POutput)
 processStoreDynamic store ps = do
   MkSomePlugins (sps :: SPlugins ps) 
     <- toSomeDyns @keys ps
