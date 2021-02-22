@@ -247,8 +247,7 @@ type family FindIndex k ks where
   FindIndex k (_ ': ks) =
     'There <$> FindIndex k ks  
 \end{code}
-A clever reader can notice that, as we did in \Cref{sec:gcd}, we have to modify this definition to recoginise \emph{witnesses} to distinguish evaluation paths.
-This is exactly the case, and we make the following tweak:
+Readers might notice that modification is needed to distinguish cluases by \emph{witnesses}, as we did in \Cref{sec:gcd}:
 \begin{code}
 type FindIndex :: forall k ks -> Maybe (Index k ks)
 type family FindIndex k ks where
@@ -296,7 +295,7 @@ Or, equivalently,
 \end{code}
 This tells us the reason why we got stuck: in \hask{STrue}-branch, GHC knows that \hask{(k === x) ~ 'True}, but GHC cannot infer \hask{k ~ x} from it!
 
-To avoid such loss of equality information, it is convenient to pack all extensionally, but not definitionally, equivalent constraints.
+To avoid such information loss, it is convenient to pack all extensionally equivalent constraints.
 Recall we have three type-level (homogeneous) equalities:
 \begin{enumerate}
 \item \hask{a ~ b}, the built-in equality constraint,

@@ -23,7 +23,7 @@ On the other hand, many of examples in the present paper arise when one tries to
 Such needs of demotion arise when one wants to resolve dependently-typed constraints at runtime, as we saw in \Cref{sec:plugins}.
 The demotion-based approach has another advantage compared to the promotion-based one: macro codes for deriving definitions are much predictable.
 For example, in \texttt{singletons}~\cite{singletons} package, there are plenty of macro-generated type-families with names with seemingly random suffixes.
-This makes, for example, writing type-checker plugins to work with generated functions rather cumbersome.
+This makes, for example, writing type-checker plugins to work with them rather tedious.
 
 We have used user-defined witnesses carrying instance information, such as singletons and equality witness.
 If once coherent explicit dictionary applications~\cite{Winant:2018wu} get implemented in GHC, we can directly manipulate an instance dictionary as another kind of witnesses.
@@ -34,8 +34,7 @@ It suggests aggressive uses of phantom types to achieve various levels of type-s
 It can be interesting to explore the synergy of such methods with our examples.
 For example, we can use \hask{Reified} class with default instances instead of \hask{Given} to switch selection strategies based on phantom type parameters.
 
-Although we didn't give a detailed analysis, the compilation performance matters much when one tries to apply involved type-level hacks in the industry.
-In this context, there are many possibilities for exploration.
+The compilation performance matters much when one tries to apply involved type-level hacks in the industry and there are many possibilities for exploration in this direction.
 For example, suppose we promote container types, such as trees, and provide basic construction as a type-function, rather than data-constructors.
 Then, as the current GHC doesn't come with the ability to inline type-level terms, it can take so much time to normalise such type-level constructions when the type appears for many times.
 In such cases, the compiler plugins to expand type families at compile time can help to improve the compilation time; but this is only a partial workaround and much investigation on such compilation efficiency must be taken.

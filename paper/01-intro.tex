@@ -24,17 +24,17 @@ Although BHK interpretation is not as rigorous as Curry--Howard correspondence, 
 
 This paper is organised as follows.
 \begin{itemize}
-  \item In \Cref{sec:gcd}, taking a type-level GCD as an example, we demonstrate how to \emph{demote} closed type-level functions involving type-level pattern-matching.
-  In particular, we suggest adding \emph{witnessing} arguments to such type-level functions to make the compiler aware of evaluation paths.
+  \item In \Cref{sec:gcd}, taking a type-level GCD as an example, we demonstrate how to \emph{demote} closed type-level functions involving pattern-matchings.
+  We suggest adding \emph{witnessing} arguments to such type-level functions to make the compiler aware of evaluation paths.
   \item \Cref{sec:disj} demonstrates that we can emulate \emph{disjunctions} of type constraints, provided that constraints in question can be recovered from some statically computable \emph{witnesses}.
   We use a field accessor for a union of extensible records as an example.
-  \item \Cref{sec:plugins} is devoted to a practical example of a dependently-typed plugin system that can be dynamically type-checked at runtime.
+  \item \Cref{sec:plugins} shows a practical example of a dependently-typed plugin system type-checkable dynamically at runtime.
   There, we see how the combination of the Deferrable constraint pattern~\cite{Kmett:2020ab} and witness manipulation can be used to achieve this goal.
   We also discuss the design of the witness of type-level equalities.
   \item Finally, we conclude in \Cref{sec:concl}.
 \end{itemize}
 
-A complete working implementation is available at \url{https://github.com/XXXXX} (made available after the blind review; for now, we provide the identical contents as the supplementary tarball).
+A complete working implementation is available at \url{https://github.com/XXXXX} (before the review, we provide it as the supplementary tarball).
 
 \subsection{Preliminaries}
 Throughout this paper, we use the standard method of \emph{singletons}~\cite{Eisenberg:2012} to simulate dependent types in Haskell.
