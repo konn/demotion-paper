@@ -221,6 +221,7 @@ instance Given (IndexUnion k ls rs)
 In above two implementations, \hask{Given} instances serve as a ``default instances'' to calculate witnesses.
 As already shown in the implementation of \hask{getFactor} for \hask{UnionRec}, it can be overridden by \hask{give} operator without resulting in type errors complaining about overlapping instances or ``Could not deduce (Known ...)''.
 This flexibility is the reason we chose to use \hask{Given} class instead of the \texttt{ImplicitParams} GHC extension providing similar functionality of dynamic scoping:  the instance shadowing in \texttt{ImplicitParams} can have unpredictable behaviour.
+Such ``defaulting'' cannot be done for \hask{Known}, because type family applications such as \hask{FindIndex k ks} cannot appear at RHS of instance declarations.
 
 Let us check it works as expected:
 

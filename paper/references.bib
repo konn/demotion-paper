@@ -1,12 +1,32 @@
 %% This BibTeX bibliography file was created using BibDesk.
 %% https://bibdesk.sourceforge.io/
 
-%% Created for 石井大海 at 2021-02-18 21:41:24 +0900 
+%% Created for 石井大海 at 2021-02-22 23:42:27 +0900 
 
 
 %% Saved with string encoding Unicode (UTF-8) 
 
 
+
+@inproceedings{Winant:2018wu,
+	abstract = {Type classes are one of Haskell's most popular features and extend its type system with ad-hoc polymorphism. Since their conception, there were useful features that could not be offered because of the desire to offer two correctness properties: coherence and global uniqueness of instances. Coherence essentially guarantees that program semantics are independent from type-checker internals. Global uniqueness of instances is relied upon by libraries for enforcing, for example, that a single order relation is used for all manipulations of an ordered binary tree.  The features that could not be offered include explicit dictionary application and local instances, which would be highly useful in practice. In this paper, we propose a new design for offering explicit dictionary application, without compromising coherence and global uniqueness. We introduce a novel criterion based on GHC's type argument roles to decide when a dictionary application is safe with respect to global uniqueness of instances. We preserve coherence by detecting potential sources of incoherence, and prove it formally. Moreover, our solution makes it possible to use local dictionaries. In addition to developing our ideas formally, we have implemented a working prototype in GHC.},
+	address = {New York, NY, USA},
+	author = {Winant, Thomas and Devriese, Dominique},
+	booktitle = {Proceedings of the 11th ACM SIGPLAN International Symposium on Haskell},
+	date-added = {2021-02-22 23:42:14 +0900},
+	date-modified = {2021-02-22 23:42:27 +0900},
+	doi = {10.1145/3242744.3242752},
+	isbn = {9781450358354},
+	keywords = {dictionaries, coherence, Haskell, type classes},
+	location = {St. Louis, MO, USA},
+	numpages = {13},
+	pages = {81--93},
+	publisher = {Association for Computing Machinery},
+	series = {Haskell 2018},
+	title = {Coherent Explicit Dictionary Application for Haskell},
+	url = {https://doi.org/10.1145/3242744.3242752},
+	year = {2018},
+	Bdsk-Url-1 = {https://doi.org/10.1145/3242744.3242752}}
 
 @inproceedings{Noonan:2018aa,
 	abstract = {Library authors often are faced with a design choice: should a function with preconditions be implemented as a partial function, or by returning a failure condition on incorrect use? Neither option is ideal. Partial functions lead to frustrating run-time errors. Failure conditions must be checked at the use-site, placing an unfair tax on the users who have ensured that the function's preconditions were correctly met.  In this paper, we introduce an API design concept called ``ghosts of departed proofs'' based on the following observation: sophisticated preconditions can be encoded in Haskell's type system with no run-time overhead, by using proofs that inhabit phantom type parameters attached to newtype wrappers. The user expresses correctness arguments by constructing proofs to inhabit these phantom types. Critically, this technique allows the library user to decide when and how to validate that the API's preconditions are met.  The ``ghosts of departed proofs'' approach to API design can achieve many of the benefits of dependent types and refinement types, yet only requires some minor and well-understood extensions to Haskell 2010. We demonstrate the utility of this approach through a series of case studies, showing how to enforce novel invariants for lists, maps, graphs, shared memory regions, and more.},
@@ -73,7 +93,8 @@
 	title = {\texttt{constraints}: Constraint manipulation},
 	url = {https://hackage.haskell.org/package/constraints},
 	urldate = {2021-02-17},
-	year = {2020}}
+	year = {2020},
+	Bdsk-Url-1 = {https://hackage.haskell.org/package/constraints}}
 
 @article{Kiselyov:2004aa,
 	author = {Kiselyov, Oleg and Shan, Chung-chieh},
@@ -99,7 +120,7 @@
 	author = {{GHC Team}},
 	date-added = {2021-02-16 02:41:08 +0900},
 	date-modified = {2021-02-18 00:54:02 +0900},
-	title = {type checker  Wiki  Glasgow Haskell Compiler / GHC  GitLab},
+	title = {type checker Wiki Glasgow Haskell Compiler / GHC GitLab},
 	url = {https://gitlab.haskell.org/ghc/ghc/-/wikis/plugins/type-checker},
 	urldate = {2021-02-16},
 	year = {2020},
