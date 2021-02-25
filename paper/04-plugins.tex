@@ -143,7 +143,7 @@ Its logic is as follows:
 In short, \hask{Greeter} involves fallback strategy on fields in the input store.
 This strategy is formulated as a \hask{Greetable} constraint; first try to inspect the exsitence of the label \hask{PStore Greeter}, and then fallback to the condition on the existence of \hask{PStore}.
 This fallback strategy can be seeen as an amalgamation of methods presented in \Cref{sec:gcd,sec:disj}, giving another way to emulate disjunction of constraints\footnote{%
-In this case, however, it woud suffice to require both \hask{Known (FindIndex (PStore Greeter) keys)} and \hask{Known (FindIndex NameStore keys)}. However, in more complex case, it saves compilation time to use such fallback strategies.}.
+In this case, however, it woud suffice to require both \hask{Known} constraints in conjunction. However, in more complex case, it saves compilation time to use such fallback strategies.}.
 
 Let's see some examples:
 \begin{repl}
@@ -192,8 +192,24 @@ class Deferrable p where
   deferEither :: proxy p -> (p => r) 
               -> Either String r
 \end{code}
-This is provided in the module \hask{Data.Constraint.Deferrable} in \texttt{constraints} package~\cite{Kmett:2020ab}, and it was first proposed by Dimitrios Vytiniotis\footnote{The author couldn't find the original reference proposing this pattern; pointers welcome!}.
-Unfortunately, we cannot write instances of \hask{Deferrable (Runnable p keys)} in general, as \hask{Runnable} is a \emph{type family} and not a \emph{class constructor}.
+This is provided in the module \hask{Data.Constraint.Deferrable} in \texttt{constraints} package~\cite{Kmett:2020ab}, and it was first proposed by Dimitrios Vytiniotis.
+For example, assume the following singletonised version of \hask{FindIndex}:
+\begin{code}
+sFindIndex :: Sing key -> SList keys
+      -> SMaybe (FindIndex key keys)
+\end{code}
+Then we can implement \hask{Deferrable} for \hask{Member k ks}:
+\begin{code}
+instance (Known k, Known ks)
+  => Deferrable (Member k ks) where
+  deferEither _ = 
+    case sFindIndex (sing @k) (sing @ks) of
+      SJust n -> give (demote n) $ Right act
+      SNothing -> Left "Not found"
+\end{code}
+This illustrates another advantage of using \hask{Given} instead of \hask{Known} in \hask{Member}: if we had formalised \hask{Member} in terms of \hask{Known}, we cannot implement \hask{Deferrable} for \hask{Member} because it includes irreducible type-family constructor, i.e.\ \hask{FindIndex k ks}.
+Unfortunately, for the same reason, we cannot write direct \hask{Deferrable}-instances for \hask{Runnable p keys} in general, as \hask{Runnable} is a \emph{type family} and instance declarations cannot include type family application in their header.
+
 Instead, we provide the dedicated class \hask{DynamicPlugin} of plugins which allow the deferral of corresponding \hask{Runnable}s:
 \begin{code}
 class IsPlugin p => DynamicPlugin p where
@@ -202,7 +218,6 @@ class IsPlugin p => DynamicPlugin p where
     => pxy p -> Proxy keys
     -> (Runnable p keys => r) -> Either String r
 \end{code}
-
 So it remains to implement \hask{IsPlugin} instances for each plugins.
 Fortunately, all the \hask{Runnable} definitions defined so far can be resolved with singleton manipulation.
 
@@ -212,18 +227,11 @@ Recall its definition:
 type Runnable 'Doubler ks = Member 'IntStore ks
 \end{code}
 By definition, \hask{Member 'IntStore keys ~ Given (Index 'IntStore keys)} and the default implementation is resolved with the superclass constraint \hask{Known (FindIndex'  'IntStore keys)}.
-Hence, assuming:
-\begin{code}
-sFindIndex :: Sing key -> SList keys
-      -> SMaybe (FindIndex key keys)
-\end{code}
 we can implement \hask{DynamicPlugin 'Doubler} as follows:
 \begin{code}
 instance DynamicPlugin 'Doubler where
-  deferDynamicPlugin _ (_ :: Proxy keys) act =
-    case sFindIndex SIntStore $ sing @keys of
-      SNothing -> Left "IntStore not found"
-      SJust v -> withKnown v $ Right act
+  deferDynamicPlugin _ (_ :: Proxy keys) =
+    deferEither_ (Member SIntStore keys)
 \end{code}
 We can likewise implement the instance for \hask{Greeter}:
 \begin{code}
@@ -286,10 +294,6 @@ sFindIndex k (SCons k ks') = case k %=== k' of
 We expected \hask{a} to be \hask{Here :: Index k (k ': ks)}, but here it becomes ambiguous type variable. Why?
 In the \hask{'True}-branch of \hask{FindIndexAux}, it returns \hask{Here}.
 Recall that \hask{Here} has the following type:
-\begin{code}
-  Here :: Index k (k ': ks)
-\end{code}
-Or, equivalently,
 \begin{code}
   Here :: k ~ k' => Index k (k' ': ks)
 \end{code}
@@ -363,7 +367,7 @@ nestNonEqual = unsafeCoerce $ NonEqual @0 @1
 \end{code}
 The reason we cannot use \hask{NonEqual} in the \hask{SPStore}-case is that, as state before, \hask{(===)} won't inspect inside compound types.
 On the other hand, since \hask{(==)} from \texttt{base} can correctly handle compound types, we can call combinator \hask{nestNonEqual} here.
-By constraining with \hask{(a == b) ~ 'False}, \hask{nestNonEqual} tries to reject illegal usages as much as possible\footnote{Aside semantics, the use of \hask{unsafeCoerce} here is memory-safe, even without any constraints. This is because coercion arguments has no runtime representation. Therefore, constructors can be treated just as if they are nullary and hence we can treat type parameters as if they are phantom.}.
+By constraining with \hask{(a == b) ~ 'False}, \hask{nestNonEqual} tries to reject illegal usages as much as possible\footnote{The use of \hask{unsafeCoerce} here is memory-safe, even without any constraints, because coercion arguments has no runtime representation.}.
 
 With \hask{SEqual} above, we can now implement \hask{sFindIndex}:
 \begin{code}

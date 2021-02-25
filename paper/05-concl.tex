@@ -8,7 +8,7 @@ As a concrete example, we have demonstrated:
 \begin{enumerate}
   \item Type-level arguments \emph{witnessing} evaluation paths in a type-family enables us to safely write corresponding singletonised function much easier afterwards.
   \item Disjunctions of type constraints can be emulated if it is recoverable from \emph{witnesses} that is statically computable at type-level.
-  \item Combining \emph{witness} manipulation and \hask{Deferrable} pattern, we can implement a dependently-typed plugin system, which can be dynamically type-checked at \emph{runtime}.
+  \item Combining \emph{witnesses} with \hask{Deferrable} class, we can implement a dependently-typed plugin system, which can be dynamically type-checked at \emph{runtime}.
   \item It is convenient to provide a unified witness type for extensionally equivalent, but not definitionally equivalent constraints; we discussed about type-level equalities as an example.
 \end{enumerate}
 To summarise, what we demonstrated in this paper is not a single \emph{method}, but a insightful way of thinking when one design methods in dependently type-level programming.
