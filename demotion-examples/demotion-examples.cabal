@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3a74479f205c5d1d83f3f02b6f4c783efb5492b3f7a7c137bf53c50c3410e3a2
+-- hash: 0d589c2b961b5e636de45cbcdd4eded8c79c6a06943141f6fa82c17cdb38053f
 
 name:           demotion-examples
 version:        0.1.0.0
@@ -32,6 +32,7 @@ library
   ghc-options: -Wall
   build-depends:
       base >=4.7 && <5
+    , constraints
     , ghc-typelits-presburger
     , mtl
     , reflection

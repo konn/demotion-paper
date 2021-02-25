@@ -24,6 +24,7 @@
 
 module Data.Type.PluginMachine where
 
+import Data.Constraint.Deferrable (deferEither_)
 import Data.Kind (Constraint, Type)
 import Data.Proxy (Proxy (..))
 import Data.Record
@@ -212,10 +213,8 @@ class IsPlugin p => DynamicPlugin p where
     Known keys => pxy p -> Proxy keys -> (Runnable p keys => r) -> Either String r
 
 instance DynamicPlugin 'Doubler where
-  deferDynamicPlugin _ (_ :: Proxy keys) act =
-    case sFindIndex SIntStore $ sing @keys of
-      SNothing -> Left "Doubler requries IntStore key"
-      SJust v -> withKnown v $ Right act
+  deferDynamicPlugin _ (_ :: Proxy keys) =
+    deferEither_ @(Member 'IntStore keys)
 
 instance DynamicPlugin 'Greeter where
   deferDynamicPlugin _ (_ :: Proxy keys) act =

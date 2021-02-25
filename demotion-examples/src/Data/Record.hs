@@ -33,6 +33,7 @@ module Data.Record
   )
 where
 
+import Data.Constraint.Deferrable
 import Data.Kind
 import Data.Reflection
 import Data.Type.Equality
@@ -208,3 +209,12 @@ A field of type `999' not found in either of fields:
 	Right: '[94, 5, 2]
 
 -}
+
+instance
+  (Known k, Known (ks :: [key]), SEqual key) =>
+  Deferrable (Member k ks)
+  where
+  deferEither _ act =
+    case sFindIndex (sing @k) (sing @ks) of
+      SJust n -> give (demote n) $ Right act
+      SNothing -> Left "Not found"
