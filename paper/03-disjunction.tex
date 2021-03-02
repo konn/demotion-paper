@@ -14,7 +14,7 @@ In some cases, however, the above obstacles can be ignored, and in most cases, u
 For example, when one wants to switch implementations of instances based on particular shapes of a constructor, it is customary to use \hask{{-# OVERLAPPABLE #-}} or \hask{{-# INCOHERENT #-}} pragmas.
 In some cases, this makes instance resolution unpredictable and incoherent, as indicated by the name, and sometimes doesn't work well with advanced type hackery.
 
-In this section, we propose another way of emulating disjunctive constraints, applying the constructive point of view.
+We propose another way to emulate disjunctive constraints, applying the constructive point of view.
 First, we recall the ``meaning'' of disjunction $\varphi \vee \psi$ in BHK interpretation:
 \begin{gather*}
       A: \varphi \vee \psi \iff A = \braket{i, B},
@@ -23,13 +23,13 @@ First, we recall the ``meaning'' of disjunction $\varphi \vee \psi$ in BHK inter
     i = 0 \text{ and } B: \varphi, \text{ or }
     i = 1 \text{ and } B: \psi.
 \end{gather*}
-That is, a ``witness'' $A$ of $\varphi \vee \psi$ is a tagged union of ``witnesses'' of $\varphi$ and $\psi$.
+That is, a ``witness'' of $\varphi \vee \psi$ is a union of those of $\varphi$ and $\psi$.
 
 It suggests that if constraints of interest can be recovered from \emph{witnesses}, we can take their disjunction by choosing one of such witnesses.
 If such witnesses can be computed statically and deterministically, the obstacle \Cref{item:openness} is not a problem.
 Further, if users can explicitly \emph{manipulate} such witnesses concretely, we can control the selection strategy of disjunctive clauses, enabling us to resolve \Cref{item:arb-choice} manually.
 
-\subsection{Motivating Example: Field Extraction of Union Types}
+\subsection{Example: Field Accessors of Union Types}
 OK, let us see the example.
 Here, we consider the following \hask{HasFactor}-class:
 
