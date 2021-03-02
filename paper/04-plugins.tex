@@ -43,7 +43,7 @@ We present the entire program architecture in \Cref{lst:plugin-arch}.
 \begin{listing}[tbp]
 \begin{code}
 data Plugin = Doubler | Greeter
-data StoreKey = IntStore | NameStore
+data StoreKey = IntStore | Name
               | PStore Plugin
 
 class IsPlugin (p :: Plugin) where
@@ -60,7 +60,7 @@ type Outputs = Record POutput
 
 type family StoreVal key where
   StoreVal 'IntStore = Int
-  StoreVal 'NameStore = String
+  StoreVal 'Name = String
   StoreVal ('PStore p) = PStoreType p
 
 type SPlugins ps = SList (ps :: [Plugin])
@@ -75,7 +75,7 @@ processStore store (SCons p ps) =
 \end{listing}
 As described before, \hask{processStore} is our main routine.
 It processes \hask{Store} represented as an extensible record with labels of kind \hask{StoreKey}, calculates \hask{POutput} for each plugin specified by a type-level list \hask{ps}, and bundles them into a single extensible record \hask{Outputs ps}.
-\hask{StoreKey} can be either \hask{IntStore}, \hask{NameStore}, or \hask{PStore p} for some plugin \hask{p}.
+\hask{StoreKey} can be either \hask{IntStore}, \hask{Name}, or \hask{PStore p} for some plugin \hask{p}.
 
 Let's see an actual implementations for plugins \hask{Doubler} and \hask{Greeter}.
 \hask{Doubler} (\Cref{lst:plugin-double}) is simple: it reas the value of \hask{IntStore}, returns the value multiplied by $2$.
@@ -107,7 +107,7 @@ type Greetable keys =
 type family Greetable_ m keys :: Constraint where
   Greetable_ ( 'Just path) _ = ()
   Greetable_ 'Nothing keys = 
-    Known (FindIndex 'NameStore keys)
+    Known (FindIndex 'Name keys)
 
 makeGreet :: PStoreType 'Greeter -> String
 instance IsPlugin 'Greeter where
@@ -124,7 +124,7 @@ instance IsPlugin 'Greeter where
        makeGreet $ getRecField 
          @('PStore 'Greeter) store
      SNothing ->
-      case sing @(FindIndex 'NameStore keys) of
+      case sing @(FindIndex 'Name keys) of
        SJust idx -> withKnown idx $ GreetOutput $
          makeGreet $ GreetEnv
           (getRecField @'IntStore store)
@@ -137,7 +137,7 @@ instance IsPlugin 'Greeter where
 Its logic is as follows:
 \begin{enumerate}
   \item If there is a field with label \hask{PStore Greeter}, generate greeting message based on it;
-  \item if \hask{NameStore} is given, greet once to that name;
+  \item if \hask{Name} is given, greet once to that name;
   \item otherwise, return the default greeting message.
 \end{enumerate}
 In short, \hask{Greeter} involves fallback strategy on fields in the input store.
@@ -148,7 +148,7 @@ In this case, however, it woud suffice to require both \hask{Known} constraints 
 Let's see some examples:
 \begin{repl}
 >>> processStore 
-      (MkStoreEntry @NameStore "Superman"
+      (MkStoreEntry @Name "Superman"
         :< MkStoreEntry @IntStore 42
         :< EmptyRecord)
       (sing @'[Doubler, Greeter])
@@ -157,13 +157,13 @@ OutputA 84
   :< EmptyRecord
 
 >>> processStore 
-      (MkStoreEntry @NameStore "anonymous"
+      (MkStoreEntry @Name "anonymous"
         :< EmptyRecord) 
       (sing @'[ Doubler])
-Key `'IntStore' is absent in: '[ 'NameStore]
+Key `'IntStore' is absent in: '[ 'Name]
 
 >>> processStore 
-      (MkStoreEntry @NameStore "Ignored"
+      (MkStoreEntry @Name "Ignored"
         :< MkStoreEntry @(PStore Greeter) 
             (GreetEnv "You" 2 "me")
         :< EmptyRecord) (sing @'[ 'Greeter])
@@ -236,16 +236,14 @@ instance DynamicPlugin 'Doubler where
 We can likewise implement the instance for \hask{Greeter}:
 \begin{code}
 instance DynamicPlugin 'Greeter where
-  deferDynamicPlugin _ (_ :: Proxy keys) act =
-    case sFindIndex (SPStore SGreeter) keys of
-      SJust pth -> withKnown pth $ Right act
-      SNothing ->
-        withKnown (sFindIndex SNameStore keys) $
-          Right act
-    where keys = sing @keys
+ deferDynamicPlugin _ (_ :: Proxy keys) act =
+  case sFindIndex (SPStore SGreeter) keys of
+   SJust pth -> withKnown pth $ Right act
+   SNothing -> withKnown (sFindIndex SName keys)
+            $ Right act
+  where keys = sing @keys
 \end{code}
 
-\subsubsection{The type-level equality strikes back!}
 Hence, it remains to implement \hask{sFindIndex}.
 Recall our current implementation of \hask{FindIndex}:
 \begin{code}
@@ -307,13 +305,17 @@ Recall we have three type-level (homogeneous) equalities:
 \item \hask{a === b}, a type-level boolean predicate which takes only the reflexivity into account.
 \end{enumerate}
 These three equalities can play their roles case-by-case, although their extensions must coincide.
-So, it is useful to pack all these (non-)equalities into a single witness, as follows:
+In addition, GHC cannot tell that latter two equalities are symmetric.
+So, it is useful to pack all these into a single witness, as follows:
 \begin{code}
 data Equality a b where
-  Equal :: ((a == b) ~ 'True, (a === b) ~ 'True,
-            a ~ b) => Equality a b
-  NonEqual :: ((a === b) ~ 'False, 
-              (a == b) ~ 'False) => Equality a b
+  Equal :: ((a == b) ~ 'True, (b == a) ~ 'True,
+    (a === b) ~ 'True, (b === a) ~ 'True, a ~ b)
+    => Equality a b
+  NonEqual
+    :: ((a === b) ~ 'False, (b === a) ~ 'False, 
+        (a == b) ~ 'False, (b == a) ~ 'False)
+    => Equality a b
 \end{code}
 As expressed by the constructor names, here \hask{Equal} witnesses the equality of given two types, and \hask{NonEqual} witnesses \emph{non}-equality.
 In this way, \hask{Equality} packages both \emph{positive} (equal) and \emph{negative} (non-equal) witnesses.
@@ -353,14 +355,14 @@ For \hask{StoreKey}, however, we need some hacks as it involves compound constru
 \begin{code}
 instance SEqual StoreKey where
   SIntStore %~ SIntStore = Equal
-  SIntStore %~ SNameStore = NonEqual
+  SIntStore %~ SName = NonEqual
   SIntStore %~ SPStore {} = NonEqual
-  -- ... Similar for SNameStore %~ x ...
+  -- ... Similar for SName %~ x ...
   SPStore p %~ SPStore q = case p %~ q of
       Equal -> Equal
       NonEqual -> nestNonEqual
   SPStore {} %~ SIntStore = NonEqual
-  SPStore {} %~ SNameStore = NonEqual
+  SPStore {} %~ SName = NonEqual
 
 nestNonEqual :: (a == b) ~ 'False => Equality a b
 nestNonEqual = unsafeCoerce $ NonEqual @0 @1
@@ -417,7 +419,7 @@ processStoreDynamic store ps = do
 Now, we can test \hask{processStoreDynamic}:
 \begin{repl}
 >>> processStoreDynamic
-      (MkStoreEntry @NameStore "Superman"
+      (MkStoreEntry @Name "Superman"
         :< MkStoreEntry @IntStore 42
         :< EmptyRecord)
       [Doubler, Greeter] -- it is a value!
@@ -426,7 +428,7 @@ Right (OutputA 84
   :< EmptyRecord)
 
 >>> processStoreDynamic
-      (MkStoreEntry @NameStore "anonymous"
+      (MkStoreEntry @Name "anonymous"
         :< EmptyRecord) 
       [Doubler]
 Left "Doubler requries IntStore key"
