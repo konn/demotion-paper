@@ -78,7 +78,7 @@ It processes \hask{Store} represented as an extensible record with labels of kin
 \hask{StoreKey} can be either \hask{IntStore}, \hask{Name}, or \hask{PStore p} for some plugin \hask{p}.
 
 Let's see an actual implementations for plugins \hask{Doubler} and \hask{Greeter}.
-\hask{Doubler} (\Cref{lst:plugin-double}) is simple: it reas the value of \hask{IntStore}, returns the value multiplied by $2$.
+\hask{Doubler} (\Cref{lst:plugin-double}) is simple: it reads the value of \hask{IntStore}, returns the value multiplied by $2$.
 \begin{listing}[tbp]
 \begin{code}
 instance IsPlugin 'Doubler where
@@ -140,10 +140,10 @@ Its logic is as follows:
   \item if \hask{Name} is given, greet once to that name;
   \item otherwise, return the default greeting message.
 \end{enumerate}
-In short, \hask{Greeter} involves fallback strategy on fields in the input store.
-This strategy is formulated as a \hask{Greetable} constraint; first try to inspect the exsitence of the label \hask{PStore Greeter}, and then fallback to the condition on the existence of \hask{PStore}.
-This fallback strategy can be seeen as an amalgamation of methods presented in \Cref{sec:gcd,sec:disj}, giving another way to emulate disjunction of constraints\footnote{%
-In this case, however, it woud suffice to require both \hask{Known} constraints in conjunction. However, in more complex case, it saves compilation time to use such fallback strategies.}.
+In short, \hask{Greeter} involves a fallback strategy on fields in the input store.
+This strategy is formulated as a \hask{Greetable} constraint; first, try to inspect the existence of the label \hask{PStore Greeter}, and then fallback to the condition on the existence of \hask{PStore}.
+This fallback strategy can be seen as an amalgamation of methods presented in \Cref{sec:gcd,sec:disj}, giving another way to emulate disjunction of constraints\footnote{%
+In this case, however, it would suffice to require both \hask{Known} constraints in conjunction. However, in more complex cases, it saves compilation time to use such fallback strategies.}.
 
 Let's see some examples:
 \begin{repl}
@@ -192,7 +192,7 @@ class Deferrable p where
   deferEither :: proxy p -> (p => r) 
               -> Either String r
 \end{code}
-This is provided in the module \hask{Data.Constraint.Deferrable} in \texttt{constraints} package~\cite{Kmett:2020ab}, and it was first proposed by Dimitrios Vytiniotis.
+This is provided in \hask{Data.Constraint.Deferrable} module from \texttt{constraints} package~\cite{Kmett:2020ab}, and it was first proposed by Dimitrios Vytiniotis.
 For example, assume the following singletonised version of \hask{FindIndex}:
 \begin{code}
 sFindIndex :: Sing key -> SList keys
@@ -231,7 +231,7 @@ we can implement \hask{DynamicPlugin 'Doubler} as follows:
 \begin{code}
 instance DynamicPlugin 'Doubler where
   deferDynamicPlugin _ (_ :: Proxy keys) =
-    deferEither_ (Member SIntStore keys)
+    deferEither_ @(Member SIntStore keys)
 \end{code}
 We can likewise implement the instance for \hask{Greeter}:
 \begin{code}
@@ -336,8 +336,8 @@ class SEqual k where
   (%~) :: Sing (a :: k) -> Sing b -> Equality a b
 \end{code}
 Some reader might realise that this looks similar to \hask{SDecide} class in \texttt{singletons} package~\cite{singletons}.
-The difference is non-equal cases: \haskinline{(%~)}
-in \hask{SDecide} returns \hask{a :~: b -> Void} in the non-equal case.
+The difference lies in the non-equal case: \haskinline{(%~)}
+in \hask{SDecide} returns \hask{a :~: b -> Void} when non-equal.
 This design decision works well if one only do with \hask{(~)}; however, we cannot derive \hask{(a == b) ~ 'False} or \hask{(a === b) ~ 'False} by the very same reason why we cannot use \haskinline{(%===)}
 in the definition of \hask{sFindIndex}.
 
@@ -369,7 +369,7 @@ nestNonEqual = unsafeCoerce $ NonEqual @0 @1
 \end{code}
 The reason we cannot use \hask{NonEqual} in the \hask{SPStore}-case is that, as state before, \hask{(===)} won't inspect inside compound types.
 On the other hand, since \hask{(==)} from \texttt{base} can correctly handle compound types, we can call combinator \hask{nestNonEqual} here.
-By constraining with \hask{(a == b) ~ 'False}, \hask{nestNonEqual} tries to reject illegal usages as much as possible\footnote{The use of \hask{unsafeCoerce} here is memory-safe, even without any constraints, because coercion arguments has no runtime representation.}.
+By constraining with \hask{(a == b) ~ 'False}, it tries to reject illegal usages as much as possible\footnote{The use of \hask{unsafeCoerce} here is memory-safe, even without any constraints, because coercion arguments has no runtime representation.}.
 
 With \hask{SEqual} above, we can now implement \hask{sFindIndex}:
 \begin{code}
@@ -436,5 +436,5 @@ Left "Doubler requries IntStore key"
 \subsection{Summary}
 We discussed the design of a statically-typed plugin system with dynamic instance resolution at runtime.
 This was achieved by combining witness-aware constraint handling and Deferrable class.
-We also discuss the design of the equality witness that can treat three distinct type-level equalities.
+We also discussed the design of the equality witness that can treat three distinct type-level equalities.
 \end{document}
