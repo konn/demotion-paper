@@ -38,7 +38,7 @@ class HasFactor a b where
   getFactor :: b -> a
 \end{code}
 
-The intended semantics of \hask{HasFactor a b} is that ``a type \hask{b} has at least one field of type \hask{a}'', and \hask{getFactor} gives such a value.
+The intended semantics of \hask{HasFactor a b} is that ``a type \hask{b} has at least one field of type \hask{a}'', and \hask{getFactor} is a corresponding field accessor.
 In short, the problem we want to tackle in this section is as follows:
 \begin{quote}
   \emph{How can we give a} \hask{HasFactor a}\emph{-instance for union types}?
@@ -46,19 +46,18 @@ In short, the problem we want to tackle in this section is as follows:
 
 \subsubsection{Extensible Records}
 To make the situation simpler, let us introduce another player into the scene: the type \hask{Record h ks} of \emph{extensible records}.
-That is, a value of type \hask{Record h ks} is a record-like structure isomorphic to a record with field labels \hask{ks :: [key]}, where each label \hask{k} in \hask{ks} is associated with a value of type \hask{h k}:
+That is, the type \hask{Record h ks} is isomorphic to a record with field labels \hask{ks :: [key]}, where each label \hask{k} in \hask{ks} is associated with a value of type \hask{h k}.
+Here, we implement \hask{Record} as a heterogeneous linked-list\footnotemark:
+\footnotetext{%
+In practice, it is much more convenient to allow specifying labels and corresponding field type independently, i.e.\ parametrise \hask{Record} over \hask{h :: key -> val -> Type}.
+And for efficiency, the underlying representation of an extensible record should be an array or vector with $O(1)$ random access.
+Furthermore, it is desirable to use type-level ordered maps instead of lists to tune-up type-checking speed.
+Several efficient implementations can be found on Hackage~\cite{Kinoshita:2020aa,Sterling:2020aa,Thiemann:2020aa}, and we are also planning to publish the in-house package (still in progress, though).}
 \begin{code}
 data Record h keys where
   EmptyRecord :: Record h '[]
   (:<) :: h k -> Record h ks -> Record h (k ': ks)
 \end{code}
-That is, we implement \hask{Record} as a heterogeneous linked-list\footnotemark.
-\footnotetext{%
-In practice, it is much more convenient to allow specifying labels and corresponding field type independently, i.e.\ parametrise \hask{Record} over \hask{h :: key -> val -> Type}.
-And for efficiency, the underlying representation of an extensible record should be an array or vector with $O(1)$ random access.
-Furthermore, it is desirable to use type-level ordered maps instead of lists to tune-up type-checking speed.
-Several efficient implementations can be found on Hackage~\cite{Kinoshita:2020aa,Sterling:2020aa,Thiemann:2020aa}, and we are also planning to publish the in-house package (still in progress, though).
-Here, we adopt the above simple API for an expository purpose.}
 We also need a field accessor to retrieve information from a record:
 \begin{code}
 data Index k ks where
@@ -87,7 +86,7 @@ type family FindIndex k ks where
 type FindIndex' k ks = 
   FromJust ('Text "not found") (FindIndex k ks)
 \end{code}
-\hask{FindIndex'} is a variant of \hask{FindIndex}, which returns a raw membership if it is found, and throwing a type-error otherwise.
+\hask{FindIndex'} is a variant of \hask{FindIndex}, which returns a raw membership if present, and throws a type-error otherwise.
 
 Now that we can compute the indices of labels statically, one can implement a variant of \hask{walkIndex} with the index statically inferred:
 \begin{code}
@@ -163,12 +162,12 @@ The root cause of this error is that the type-checker doesn't know the following
 \end{enumerate}
 Although these two facts seem rather obvious, it needs some non-trivial axioms to infer.
 Hence, if we want to convince the compiler without modifying the instance definitions, we have to augment the compiler with type-checker plugins~\cite{GHC-Team:2020aa}.
-Although writing type-checker plugins is a fun, but not so easy to implement it \emph{correctly}. Is there any other way to avoid this obstacle?
+Although writing type-checker plugins is a fun, but it is not so easy to implement it \emph{correctly}. Is there any other way to avoid this obstacle?
 
 At this point, we must notice one fact: we can still use \emph{any} value of type \hask{Index k ks} to retrieve a value of type \hask{h k} from \hask{Record h ks}.
 Indeed, as \hask{ks} can have duplicated elements, there can be more than one distinct \hask{Index k ks} at the same time, e.g.\ for \hask{Index 3 '[3 ,5, 4, 3]}.
 \hask{FindIndex} was just a canonical way of computing the left-most such index, if present.
-To summary, requiring \hask{Known (LookupIndex' k ks)} in \hask{getRecField} and the \hask{HasFactor}-instance for extensible records was just too much.
+To summarise, requiring \hask{Known (LookupIndex' k ks)} in \hask{getRecField} and the \hask{HasFactor}-instance for extensible records was just too much.
 What we really need is a constraint demanding ``there is at least one value of type \hask{Index k ks} given'', embodied by the following class and helper functions:
 \begin{code}
 class Given a where
@@ -256,9 +255,9 @@ A field of type `999' not found in either:
 \subsection{Summary}
 We saw that we could emulate a disjunction of type constraints if the constraints in question have \emph{witnessing} type, and there is a canonical way of statically computing such witnesses at type-level.
 In the above example, \hask{Member k ks} and \hask{HasFactor (h a) (RecUnion h ls rs)} are such constraints, witnessed by \hask{Index k ks} and \hask{IndexUnion k ls rs}, and such witnesses can be computed by \hask{FindIndex'} and \hask{UnionedIndex'}, respectively.
-In expressing the existence of witnesses, it allows much precise and robust handling to use the \hask{Given} class.
+In expressing the existence of witnesses, it allows a precise and robust handling to use the \hask{Given} class.
 Especially, this makes it easy to give ``fallback'' witness when canonical witness constructor can fail.
 Although we treated only extensible records here, we can apply the same technique to more general settings;
-we refer curious readers to \texttt{Data.Type.Path} module in the accompanying Supplementary. 
+we refer curious readers to \texttt{Data.Type.Path} module in the accompanying supplementary material.
 % TODO: Change to refer to GitHub repo after the review.
 \end{document}
