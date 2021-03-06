@@ -32,10 +32,10 @@ Since the contribution of this paper is a general point of view, there is much r
 For example, the method of Ghosts of Departed Proofs~\cite{Noonan:2018aa} shares the witness-aware spirit with the present paper.
 It suggests aggressive uses of phantom types to achieve various levels of type-safety.
 It can be interesting to explore the synergy of such methods with our examples.
-For example, we can use \hask{Reified} class with default instances instead of \hask{Given} to switch selection strategies based on phantom type parameters.
+For example, we can use the \hask{Reified} class with default instances instead of \hask{Given} to switch selection strategies based on phantom type parameters.
 
 The compilation performance matters much when one tries to apply involved type-level hacks in the industry and there are many possibilities for exploration in this direction.
 For example, suppose we promote container types, such as trees, and provide basic construction as a type-function, rather than data-constructors.
 Then, as the current GHC doesn't come with the ability to inline type-level terms, it can take so much time to normalise such type-level constructions when they appear repeatedly.
-In such cases, the compiler plugins to expand type families at compile time can help to improve the compilation time; but this is only a partial workaround and much investigation on such compilation efficiency must be taken.
+In such cases, the compiler plugins to expand type families at compile time can help to improve the compilation time; but this is only a partial workaround and more investigations must be taken.
 \end{document}
