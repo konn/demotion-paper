@@ -116,7 +116,7 @@ jobs:
     runs-on:  ubuntu-18.04
     container: docker://konn/texlive2020-slim:20201227.4
     env:
-      JOBNAME: rims-smooth-paper-arxiv
+      JOBNAME: demotion-paper
 
     steps:
       - uses: actions/checkout@v2
@@ -181,7 +181,6 @@ jobs:
 
       - name: Creates tarball
         run: |
-          rm -rf ${{env.WORKDIR}}/rims-smooth-paper.*
           rm -rf ${{env.WORKDIR}}/*.pdf
           tar czf ${{env.JOBNAME}}.tar.gz --directory=${{env.WORKDIR}} .
 
@@ -197,7 +196,7 @@ jobs:
       - name: Upload an arXiv tarball
         uses: actions/upload-artifact@v2.2.1
         with:
-          name: rims-arxiv
+          name: demotion-arxiv
           path: ${{env.JOBNAME}}.tar.gz
           if-no-files-found: error # optional, default is warn
           retention-days: 90
@@ -205,7 +204,7 @@ jobs:
       - name: Upload an arXiv preview
         uses: actions/upload-artifact@v2.2.1
         with:
-          name: rims-arxiv-preview
+          name: demotion-arxiv-preview
           path: ${{env.JOBNAME}}-testing/${{env.JOBNAME}}.pdf
           if-no-files-found: error # optional, default is warn
           retention-days: 90
