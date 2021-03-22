@@ -1,4 +1,7 @@
-\documentclass[sigplan,review]{acmart}
+\input{switches}
+\documentclass[sigplan,%
+  \ifbool{arxiv}{noacm}{\ifbool{final}{}{review}}
+]{acmart}
 \usepackage{subfiles}
 \input{config}
 \input{syntax}
@@ -31,18 +34,19 @@
 %% "authornote" and "authornotemark" commands
 %% used to denote shared contribution to the research.
 
-% FIXME: Correct author info after the review
-% \author{Hiromi Ishii}
-% \email{h-ishii@math.tsukuba.ac.jp}
-% \affiliation{%
-%   \institution{DeepFlow, Inc.}
-%   \streetaddress{3-16-40}
-%   \city{Fujimi-shi Tsuruse nishi}
-%   \state{Saitama prefecture}
-%   \country{Japan}
-%   \postcode{354-0026}}
+\ifbool{realname}{%
+\author{Hiromi Ishii}
+\email{h-ishii@math.tsukuba.ac.jp}
+\affiliation{%
+  \institution{DeepFlow, Inc.}
+  \streetaddress{3-16-40}
+  \city{Fujimi-shi Tsuruse nishi}
+  \state{Saitama prefecture}
+  \country{Japan}
+  \postcode{354-0026}}
+  \renewcommand{\shortauthors}{Hiromi Ishii}
+}{}
 
-% \renewcommand{\shortauthors}{Hiromi Ishii}
 
 \begin{CCSXML}
 <ccs2012>
@@ -91,8 +95,13 @@
 \subfile{05-concl}
 
 \begin{acks}
+\ifbool{maingo}{%
+Many of techniques presented in this paper has been found while developing products at DeepFlow, Inc.
+I thank my employer and colleagues for fruitful discussions and their challenging spirit which allows me to use type-level features so agressively.
+}{%
 Techniques presented in this paper were found while developing software at my company.
 I thank my colleagues for fruitful discussions.
+}
 \end{acks}
 
 \bibliographystyle{ACM-Reference-Format}

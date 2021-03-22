@@ -1,0 +1,20 @@
+\RequirePackage{etoolbox}
+\newbool{arxiv}
+% \booltrue{arxiv}
+\newbool{arxiv-cached}
+% \booltrue{arxiv-cached}
+\ifbool{arxiv-cached}{\booltrue{arxiv}}{}
+\newbool{final}
+% \booltrue{final}
+\newbool{realname}
+\ifbool{arxiv}{%
+  \booltrue{realname}%
+  \def\xcoloropt{prologue}
+}{%
+  \ifbool{final}{\booltrue{realname}}{}
+  \def\xcoloropt{gray,prologue}
+}
+\newbool{maingo}
+\ifbool{arxiv}{\booltrue{maingo}}{}
+\ifbool{final}{\booltrue{maingo}}{}
+

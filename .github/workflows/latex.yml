@@ -154,12 +154,7 @@ jobs:
       - name: Modifies latex files so that it generates appropriate cache
         run: |
           cd ${GITHUB_WORKSPACE}/${WORKDIR}
-          sed -i 's/\\usepackage{minted}/\\usepackage[finalizecache]{minted}/' syntax.tex
-          sed -i 's/\\setminted{style=borland}//' syntax.tex
-          sed -i 's/\[gray,prologue\]{xcolor}/[prologue]{xcolor}/' acmart-preload-hook.tex
-          sed -i 's/\[gray,prologue\]{xcolor}/[prologue]{xcolor}/' config.tex
-          sed -i 's/\\documentclass\[sigplan,review\]{acmart}/\\documentclass[sigplan,nonacm]{acmart}/' demotion-paper.tex
-          sed -i -e 's/^% *\(\\\(author\|email\|affiliation\|institution\|streetaddress\|city\|state\|country\|postcode\)\)/\1/g' demotion-paper.tex
+          sed -i 's/% \\booltrue{arxiv}/\\booltrue{arxiv}/' switches.tex
           sed -i 's/lualatex/pdflatex/g' .latexmkrc
 
       - name: Typeset it (with pdflatex)
@@ -183,7 +178,7 @@ jobs:
       - name: Modifies latex files so that it uses appropriate minted cache
         run: |
           cd ${GITHUB_WORKSPACE}/${WORKDIR}
-          sed -i 's/\\usepackage\[finalizecache\]{minted}/\\usepackage[frozencache]{minted}/' syntax.tex
+          sed -i 's/% \\booltrue{arxiv-cached}/\\booltrue{arxiv-cached}/' switches.tex
 
       - name: Creates tarball
         run: |

@@ -1,5 +1,13 @@
+\ifbool{arxiv}{%
+  \ifbool{arxiv-cached}{%
+    \usepackage[frozencache]{minted}%
+  }{%
+    \usepackage[finalizecache]{minted}%
+  }
+}{
 \usepackage{minted}
-\setminted{style=borland}
+}
+\ifbool{arxiv}{}{\setminted{style=borland}}
 
 \newminted[code]{haskell}{%
 mathescape,linenos,numbersep=5pt,frame=lines,framesep=2mm,%
