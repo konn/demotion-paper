@@ -163,6 +163,7 @@ jobs:
         run: |
           cd ${GITHUB_WORKSPACE}/${WORKDIR}
           ls
+          grep -A 10 'author{' demotion-paper.tex
           latexmk -pdf ${JOBNAME}.tex
 
       - name: Store latex generated files
