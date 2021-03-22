@@ -187,7 +187,7 @@ jobs:
       - name: Creates tarball
         run: |
           rm -rf ${{env.WORKDIR}}/*.pdf
-          tar --exclude .latex czf ${{env.JOBNAME}}.tar.gz --directory=${{env.WORKDIR}} .
+          tar czf ${{env.JOBNAME}}.tar.gz --directory=${{env.WORKDIR}} --exclude=${{env.WORKDIR}}/.latex .
 
       - name: Checks that generated tarball generates appropriate output without -shell-escape
         run: |
