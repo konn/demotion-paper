@@ -110,3 +110,102 @@ jobs:
           echo "::error::Current page count ${PAGES} exceeds range ${PAGE_LOWERBOUND}..${PAGE_UPPERBOUND}!"
           exit 1
         fi
+
+  # Generates arXiv compatible tarball
+  arxiv:
+    runs-on:  ubuntu-18.04
+    container: docker://konn/texlive2020-slim:20201227.4
+    env:
+      JOBNAME: rims-smooth-paper-arxiv
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Cache
+        id: tex-cache
+        uses: actions/cache@v2.1.3
+        with:
+          # A list of files, directories, and wildcard patterns to cache and restore
+          path: |
+            ${{env.WORKDIR}}/${{env.JOBNAME}}.fdb_latexmk
+            ${{env.WORKDIR}}/.latex/
+            ${{env.WORKDIR}}/_minted-${{env.JOBNAME}}
+
+          # An explicit key for restoring and saving the cache
+          key: ${{env.JOBNAME}}-${{github.ref}}-${{ runner.os }}-${{ hashFiles('**/*.tex', '**/*.sty', '**/*.fdb_latexmk', 'extract-generateds.lua') }}
+          restore-keys: |
+            ${{env.JOBNAME}}-${{github.ref}}-${{ runner.os }}-
+            ${{env.JOBNAME}}-${{github.ref}}-
+            ${{env.JOBNAME}}-master-
+      - name: Create .latex directory if missing
+        run: |
+          [ -d ${GITHUB_WORKSPACE}/${WORKDIR}/.latex ] || mkdir -p ${GITHUB_WORKSPACE}/${WORKDIR}/.latex
+      - name: Restore latex files
+        run: |
+          cd $GITHUB_WORKSPACE/${WORKDIR}
+          if [ -n "$(find .latex/ -mindepth 1 -maxdepth 1)" ]; then
+            cp -r .latex/* .
+          else
+            echo "::warn::No .latex/ directory found. skip"
+          fi
+      - name: Install pygments
+        run: |
+          apt-get update && apt-get install -y python3-pygments
+
+      - name: Modifies latex files so that it generates appropriate cache
+        run: |
+          cd ${GITHUB_WORKSPACE}/${WORKDIR}
+          sed -i 's/\\usepackage{minted}/\\usepackage[finalizecache]{minted}/' syntax.tex
+          sed -i 's/lualatex/pdflatex/g' .latexmkrc
+
+      - name: Typeset it (with pdflatex)
+        run: |
+          cd ${GITHUB_WORKSPACE}/${WORKDIR}
+          ls
+          latexmk -pdf ${JOBNAME}.tex
+
+      - name: Store latex generated files
+        run: |
+          cd ${GITHUB_WORKSPACE}/${WORKDIR}
+          ls
+          for fdb in $(find . -name "*.fdb_latexmk"); do
+              for i in $(texlua ${GITHUB_WORKSPACE}/ci-resources/extract-generateds.lua <$fdb); do
+                echo "::debug::cp $(dirname $fdb)/$i .latex/$(dirname $fdb)/$i"
+                cp $(dirname $fdb)/$i .latex/$(dirname $fdb)/$i
+              done
+          done
+
+      - name: Modifies latex files so that it uses appropriate minted cache
+        run: |
+          cd ${GITHUB_WORKSPACE}/${WORKDIR}
+          sed -i 's/\\usepackage\[finalizecache\]{minted}/\\usepackage[frozencache]{minted}/' syntax.tex
+
+      - name: Creates tarball
+        run: |
+          rm -rf ${{env.WORKDIR}}/rims-smooth-paper.*
+          rm -rf ${{env.WORKDIR}}/*.pdf
+          tar czf ${{env.JOBNAME}}.tar.gz --directory=${{env.WORKDIR}} .
+
+      - name: Checks that generated tarball generates appropriate output without -shell-escape
+        run: |
+          mkdir -p ${{env.JOBNAME}}-testing
+          tar xzf ${{env.JOBNAME}}.tar.gz --directory=${{env.JOBNAME}}-testing
+          cd ${{env.JOBNAME}}-testing
+          ls
+          grep minted syntax.tex
+          pdflatex ${{env.JOBNAME}}.tex -shell-escape -file-line-error -interaction=nonstopmode -halt-on-error
+
+      - name: Upload an arXiv tarball
+        uses: actions/upload-artifact@v2.2.1
+        with:
+          name: rims-arxiv
+          path: ${{env.JOBNAME}}.tar.gz
+          if-no-files-found: error # optional, default is warn
+          retention-days: 90
+
+      - name: Upload an arXiv preview
+        uses: actions/upload-artifact@v2.2.1
+        with:
+          name: rims-arxiv-preview
+          path: ${{env.JOBNAME}}-testing/${{env.JOBNAME}}.pdf
+          if-no-files-found: error # optional, default is warn
+          retention-days: 90
