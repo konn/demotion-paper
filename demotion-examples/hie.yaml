@@ -1,6 +1,0 @@
-cradle:
-  stack:
-    - path: "src"
-      component: "demotion-examples:lib"
-    - path: "test"
-      component: "demotion-examples:test:demotion-examples-test"

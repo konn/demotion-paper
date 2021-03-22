@@ -1,0 +1,8 @@
+cradle:
+  stack:
+    stackYaml: demotion-examples/stack.yaml
+    components:
+    - path: "demotion-examples/src"
+      component: "demotion-examples:lib"
+    - path: "demotion-examples/test"
+      component: "demotion-examples:test:demotion-examples-test"
