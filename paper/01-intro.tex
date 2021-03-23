@@ -49,9 +49,9 @@ class Known a where -- SingI in singletons
   sing :: Sing a
 withKnown :: Sing a -> (Known a => r) -> r
 
-data SomeSing k where -- SingKind in singletons
+data SomeSing k where
   MkSomeSing :: Sing (a :: k) -> SomeSing k
-class HasSing k where
+class HasSing k where -- SingKind in singletons
   type Demoted k 
   demote :: Sing (a :: k) -> Demoted k
   promote :: Demoted k -> SomeSing k
