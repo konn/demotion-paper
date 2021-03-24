@@ -1,5 +1,7 @@
 # Functional Pearl: Witness Me — Constructive Arguments Must Be Guided with Concrete Witness
 
+__NOTE__: This repository doesn't accept any Pull Request. Please don't open one(s) 😀
+
 ## About
 This repository is the support repository for "Functional Pearl: Witness Me — Constructive Arguments Must Be Guided with Concrete Witness" by Hiromi Ishii.
 
