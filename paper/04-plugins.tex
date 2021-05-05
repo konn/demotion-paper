@@ -230,7 +230,12 @@ Recall its definition:
 \begin{code}
 type Runnable 'Doubler ks = Member 'IntStore ks
 \end{code}
-By definition, \hask{Member 'IntStore keys ~ Given (Index 'IntStore keys)} and the default implementation is resolved with the superclass constraint \hask{Known (FindIndex'  'IntStore keys)}.
+By definition, we have:
+\begin{minted}{haskell}
+  Member 'IntStore keys 
+    ~ Given (Index 'IntStore keys)
+\end{minted}
+and the default implementation is resolved with the superclass constraint \hask{Known (FindIndex'  'IntStore keys)}.
 we can implement \hask{DynamicPlugin 'Doubler} as follows:
 \begin{code}
 instance DynamicPlugin 'Doubler where

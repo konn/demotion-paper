@@ -8,7 +8,7 @@
 \usepackage{minted}
 }
 \ifbool{arxiv}{}{\setminted{style=borland}}
-
+\usepackage{fancyvrb}
 \newminted[code]{haskell}{%
 mathescape,linenos,numbersep=5pt,frame=lines,framesep=2mm,%
 }
@@ -16,7 +16,6 @@ mathescape,linenos,numbersep=5pt,frame=lines,framesep=2mm,%
 mathescape,numbersep=5pt,frame=lines,framesep=2mm,%
 }
 \VerbatimFootnotes
-\DeclareTotalTCBox{\hask}{v}{%
-tcbox raise base,box align=base,verbatim,colback=lightgray,colframe=gray%
-}{\mintinline[fontsize=\SMALL]{haskell}{#1}}
+\let\hask=\Verb
+% \newcommand{\hask}[1]{\texttt{\detokenize{#1}}}
 \let\haskinline=\hask

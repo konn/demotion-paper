@@ -11,7 +11,7 @@ As for general type-classes, excluding disjunction from the language is a ration
   \label{item:arb-choice}
 \end{enumerate}
 In some cases, however, the above obstacles can be ignored, and in most cases, unrestricted disjunctions are unnecessary.
-For example, when one wants to switch implementations of instances based on particular shapes of a constructor, it is customary to use \hask{{-# OVERLAPPABLE #-}} or \hask{{-# INCOHERENT #-}} pragmas.
+For example, when one wants to switch implementations of instances based on particular shapes of a constructor, it is customary to use \verb!{-# OVERLAPPABLE #-}! or \verb!{-# INCOHERENT #-}! pragmas.
 In some cases, this makes instance resolution unpredictable and incoherent, as indicated by the name, and sometimes doesn't work well with advanced type hackery.
 
 We propose another way to emulate disjunctive constraints, applying the constructive point of view.
