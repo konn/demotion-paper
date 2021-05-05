@@ -129,7 +129,7 @@ type family a == b where
   a   == a   = 'True
   _   == _   = 'False
 \end{code}
-As described in the documentation~\cite{GHC-Team:2021aa}, the intuition behind the definition of the first clause is to let the compiler to infer, e.g.\ \hask{Just a == Just b} from \hask{a == b}.
+As described in the documentation~\cite{GHC-Team:2021aa}, the intuition behind the definition of the first clause is to let the compiler infer, e.g.\ \hask{Just a == Just b} from \hask{a == b}.
 
 This behaviour is desirable when one treats equalities involving compound types, like \hask{(f a == g b) ~ 'True}.
 But when one wants to give a witness of \hask{(a == b) ~ 'True}, we cannot make use of \hask{Refl}.
@@ -196,7 +196,7 @@ We can confirm that the above \hask{sGCD} works just as expected:
 6
 \end{repl}
 
-\subsection{Summary}
+\subsection*{Summary}
 When writing closed type-families, it is useful to introduce arguments \emph{witnessing} evaluation paths explicitly, interpreting clauses in a closed family as mutually exclusive alternatives.
 It makes it easy to write its demoted singletonised functions.
 As there are several variants of type-level equalities, we must choose appropriate one carefully; in the GCD case it is convenient to use the type-level Boolean equality which takes only reflexivity into account.

@@ -47,8 +47,11 @@ In short, the problem we want to tackle in this section is as follows:
 \subsubsection{Extensible Records}
 To make the situation simpler, let us introduce another player into the scene: the type \hask{Record h ks} of \emph{extensible records}.
 That is, the type \hask{Record h ks} is isomorphic to a record with field labels \hask{ks :: [key]}, where each label \hask{k :: key} in \hask{ks} is associated with a value of type \hask{h k}.
-Here, \hask{h :: key -> Type} gives an actual container type for each label; for example, \hask{Record Maybe '[Int, String, Bool]} represents the type of record with fields of types \hask{Maybe Int}, \hask{Maybe String} and \hask{Maybe Bool}.
-In what follows, we implement \hask{Record} as a heterogeneous linked-list\footnotemark:
+Here, \hask{h :: key -> Type} gives a container type for each label; for example, \hask{Record Maybe '[Int, String, Bool]} represents the type of record with fields of types \hask{Maybe Int}, \hask{Maybe String} and \hask{Maybe Bool}.
+We separate a container type \hask{h} from labels \hask{ks} to label each field with any types of any kinds other than \hask{Type}; for example with \hask{Symbol}.
+This separation also enables us more flexible and direct control over the constraints on field labels than unifying \hask{h} with \hask{ks}.
+
+In what follows, we implement \hask{Record} as a heterogeneous linked-list\cite{Kiselyov:2004}\footnotemark:
 \footnotetext{%
 In practice, it is much more convenient to allow specifying labels and corresponding field type independently, i.e.\ parametrise \hask{Record} over \hask{h :: key -> val -> Type}.
 And for efficiency, the underlying representation of an extensible record should be an array or vector with $O(1)$ random access.
@@ -111,8 +114,8 @@ Key `Bool' is absent in the list: '[]
 
 Now, we can give an implementation of \hask{HasFactor} for records:
 \begin{code}
-instance (Member a keys, h ~ h')
-      => HasFactor (h' a) (Record h keys) where
+instance (Member a ks, h ~ h')
+      => HasFactor (h' a) (Record h ks) where
   getFactor = getRecField
 \end{code}
 
@@ -166,7 +169,7 @@ Hence, if we want to convince the compiler without modifying the instance defini
 Although writing type-checker plugins is a fun, but it is not so easy to implement it \emph{correctly}. Is there any other way to avoid this obstacle?
 
 At this point, we must notice one fact: we can still use \emph{any} value of type \hask{Index k ks} to retrieve a value of type \hask{h k} from \hask{Record h ks}.
-Indeed, as \hask{ks} can have duplicated elements, there can be more than one distinct \hask{Index k ks} at the same time, e.g.\ for \hask{Index 3 '[3 ,5, 4, 3]}.
+Indeed, as \hask{ks} can have duplicated elements, there can be more than one distinct \hask{Index k ks} at the same time; \hask{Index 3 '[3 ,5, 4, 3]} for example.
 \hask{FindIndex} was just a canonical way of computing the left-most such index, if present.
 To summarise, requiring \hask{Known (LookupIndex' k ks)} in \hask{getRecField} and the \hask{HasFactor}-instance for extensible records was just too much.
 What we really need is a constraint demanding ``there is at least one value of type \hask{Index k ks} given'', embodied by the following class and helper functions:
