@@ -72,7 +72,7 @@ Since the \hask{GCD} is defined as a closed type family, the compiler can match 
 In other words, the constructor \hask{Refl} \emph{witnesses} the evaluation path of type-level function \hask{GCD} in the first two cases.
 
 In the last case, however, no additional type-level constraint is available.
-Despite humans can still think ``as all the \hask{Refl} clauses failed to match, hence the non-equal clause must apply here'', this intuition is not fully expressed in the type-level constraint!
+Although humans can still think ``as all the \hask{Refl} clauses failed to match, hence the non-equal clause must apply here'', this intuition is not fully expressed in the type-level constraint!
 
 So we have to give the compiler some \emph{witness} also in the last case.
 What kind of a witness is needed here?
@@ -100,15 +100,15 @@ As clauses in closed type families can be viewed as a mutually exclusive alterna
 Now that we can give the compiler witnesses as the first two type-arguments of \hask{GCD_}, we are set to implement \hask{sGCD}.
 First, we need \emph{demoted} version of type-level \hask{(==)}.
 The first attempt might go as follows:
-\begin{code}
+\begin{code*}{escapeinside=||,linenos,gobble=0}
 (%==) :: TestEquality f
       => f a -> f b -> SBool (a == b)
 sa %== sb = case testEquality sa sb of
-  Just Refl -> STrue
+  Just Refl -> STrue |\label{line:trueclause}|
   Nothing -> SFalse
-\end{code}
+\end{code*}
 Unfortunately, this doesn't work as expected.
-The first error on \hask{STrue} says:
+The first error on \hask{STrue} (\lref{line:trueclause}) says:
 
 \begin{repl}
 • Could not deduce: (a == a) ~ 'True
@@ -146,15 +146,15 @@ Although this equality cannot treat equalities between compound types inductivel
 We will revisit to a treatment of type-level equality in \Cref{sec:plugins}.
 Demoted version of this now gets:
 
-\begin{code}
+\begin{code*}{escapeinside=||,gobble=0}
 (%===) :: TestEquality f
        => f a -> f b -> SBool (a === b)
 sa %=== sb = case testEquality sa sb of
   Just Refl -> STrue
-  Nothing -> SFalse  
-\end{code}
+  Nothing -> SFalse |\label{line:falseclause}|
+\end{code*}
 
-Now, the type-error remains on the last clause: \hask{SFalse}.
+Now, the type-error remains on \lref{line:falseclause}: \hask{SFalse}.
 This is, again, due to the lack of witness of being distinct.
 But wait! We are just struggling to produce such a negative witness of non-equality, which in turn requires itself. A vicious cycle!
 At this very point, there is no other way than resorting to the ancient cursed spell \hask{unsafeCoerce}:
@@ -168,7 +168,7 @@ sa %=== sb = case testEquality sa sb of
 This use of \hask{unsafeCoerce} is inherently inevitable.
 Fortunately, provided that \hask{TestEquality} instance is implemented soundly, this use of \hask{unsafeCoerce} is not cursed: this is just postulating an axiom that is true but there is no way to tell it to the compiler safely.
 If one wants to construct evidence of type-level (non-)equality solely from the expression, we must assume some axiom and introduce it by \hask{unsafeCoerce}.
-This is how library builders usually do when they implement basic (expression-level) operators to manipulate type-level values.
+This is what library builders usually do when they implement basic (expression-level) operators to manipulate type-level values.
 Such ``trust me'' axioms can be found, for example, in \hask{TestEquality TypeRep} instance in \texttt{base}, and various \hask{SEq} instances in \texttt{singletons}~\cite{singletons} package\footnote{There is another way of introducing axioms: invoking type-checker plugins.}.
 Anyway, we are finally at the point of implementing working \hask{sGCD}, replacing every occurrence of \hask{(==)} with our custom \hask{(===)}:
 
@@ -189,7 +189,7 @@ sGCD sn sm =
     (SFalse, SFalse) -> sGCD (sMod sm sn) sn
 \end{code}
 
-Finally, the compiler gets happy with all the definitions!
+Finally, the compiler is happy with all the definitions!
 We can confirm that the above \hask{sGCD} works just as expected:
 \begin{repl}
 >>> sGCD (sNat @12) (sNat @30)

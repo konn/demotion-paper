@@ -26,7 +26,7 @@ First, we recall the ``meaning'' of disjunction $\varphi \vee \psi$ in BHK inter
 That is, a ``witness'' of $\varphi \vee \psi$ is a union of those of $\varphi$ and $\psi$.
 
 It suggests that if constraints of interest can be recovered from \emph{witnesses}, we can take their disjunction by choosing one of such witnesses.
-If such witnesses can be computed statically and deterministically, the obstacle \Cref{item:openness} is not a problem.
+If those witnesses can be computed statically and deterministically, the obstacle \Cref{item:openness} is not a problem.
 Further, if users can explicitly \emph{manipulate} such witnesses concretely, we can control the selection strategy of disjunctive clauses, enabling us to resolve \Cref{item:arb-choice} manually.
 
 \subsection{Example: Field Accessors of Union Types}
@@ -46,12 +46,13 @@ In short, the problem we want to tackle in this section is as follows:
 
 \subsubsection{Extensible Records}
 To make the situation simpler, let us introduce another player into the scene: the type \hask{Record h ks} of \emph{extensible records}.
-That is, the type \hask{Record h ks} is isomorphic to a record with field labels \hask{ks :: [key]}, where each label \hask{k} in \hask{ks} is associated with a value of type \hask{h k}.
-Here, we implement \hask{Record} as a heterogeneous linked-list\footnotemark:
+That is, the type \hask{Record h ks} is isomorphic to a record with field labels \hask{ks :: [key]}, where each label \hask{k :: key} in \hask{ks} is associated with a value of type \hask{h k}.
+Here, \hask{h :: key -> Type} gives an actual container type for each label; for example, \hask{Record Maybe '[Int, String, Bool]} represents the type of record with fields of types \hask{Maybe Int}, \hask{Maybe String} and \hask{Maybe Bool}.
+In what follows, we implement \hask{Record} as a heterogeneous linked-list\footnotemark:
 \footnotetext{%
 In practice, it is much more convenient to allow specifying labels and corresponding field type independently, i.e.\ parametrise \hask{Record} over \hask{h :: key -> val -> Type}.
 And for efficiency, the underlying representation of an extensible record should be an array or vector with $O(1)$ random access.
-Furthermore, it is desirable to use type-level ordered maps instead of lists to tune-up type-checking speed.
+Furthermore, it is desirable to use type-level ordered maps instead of lists to tune-up type-checking speed and prevent duplicated labels statically.
 Several efficient implementations can be found on Hackage~\cite{Kinoshita:2020aa,Sterling:2020aa,Thiemann:2020aa}, and we are also planning to publish the in-house package (still in progress, though).}
 \begin{code}
 data Record h keys where
@@ -66,7 +67,7 @@ data Index k ks where
 
 -- ...Obvious singletons and Known instances...
 
-walkIndex :: Index k ks -> Record f ks -> f k
+walkIndex :: Index k ks -> Record h ks -> h k
 walkIndex Here (v :< _) = v
 walkIndex (There trail) (_ :< rest) = 
   walkIndex trail rest  
@@ -75,7 +76,7 @@ A type \hask{Index k ks} is a \emph{witness} of the membership of a label \hask{
 The function \hask{walkIndex} walks an extensible record along a given \hask{Index k ks} and retrieves a value of \hask{h k}\footnote{The same remark on efficiency as above also applies here: it is much more practical to use an index number represented as a newtyped \hask{Int} if one needs $O(1)$ random access on fields.
 In such a case, one has to use \hask{unsafeCoerce} carefully to convince the compiler.}.
 
-We can also compute \hask{Index} at type-level in an obvious way\footnote{Oh, you noticed something? Well, in \Cref{sec:plugins}, we will turn to the implementation of \hask{FindIndex} again.}, where \haskinline{(<$>)} is a type-level analogue of \hask{fmap}:
+We can also compute \hask{Index} at type-level in an obvious way, where \haskinline{(<$>)} is a type-level analogue of \hask{(<$>)}:
 \begin{code}
 type family FindIndex k ks where
   FindIndex _ '[] = 'Nothing
@@ -97,8 +98,8 @@ getRecField = walkIndex $
   demote $ sing @(FindIndex' k ks)
 \end{code}
 The idea is that if the concrete value of \hask{FindIndex' k ks} is \hask{Known} at the compile-time, we can use it to retrieve a field in a record.
-Note that if the value of \hask{FindIndex key keys} was \hask{'Nothing}, \hask{FindIndex' key keys} reduces to a type-error.
-In such a case, since the type-level language of Haskell is strict, the entire constraint \hask{Known (FindIndex' key keys)} throws a type-error during instance resolution:
+Note that if the value of \hask{FindIndex k ks} was \hask{'Nothing}, \hask{FindIndex' k ks} reduces to a type-error.
+In such a case, since the type-level language of Haskell is strict, the entire constraint \hask{Known (FindIndex' k ks)} throws a type-error during instance resolution:
 \begin{repl}
 >>> getRecField @Bool (EmptyRecord @Maybe)
 Key `Bool' is absent in the list: '[]
@@ -130,10 +131,10 @@ instance (HasFactor (h a) (Record h ls)
           `Or` HasFactor (h a) (Record h rs))
   => HasFactor (h a) (RecUnion h ls rs) where ...
 \end{code}
-But, as noted before, there is no such things in Haskell as restricted \hask{Or}-constraint.
+But, as noted before, there is no such thing in Haskell as restricted \hask{Or}-constraint.
 
 Fortunately, our \hask{HasFactor (h a) (Record h ls)} instance is \emph{witnessed} by a concrete type: \hask{Index a ls}!
-Since its concrete value can be computed statically by \hask{FindIndex} type-family, why not combining the results of them\footnote{Here, \hask{(<|>)} is a type-level left-biased choice operator on \hask{Maybe}s.}?
+Since its concrete value can be computed statically by \hask{FindIndex} type-family, why not combine the results of them\footnote{Here, \hask{(<|>)} is a type-level left-biased choice operator on \hask{Maybe}s.}?
 \begin{code}
 type UnionedIdnex k ls rs = 
   'Left <$> FindIndex k ls
@@ -255,7 +256,7 @@ A field of type `999' not found in either:
 \subsection{Summary}
 We saw that we could emulate a disjunction of type constraints if the constraints in question have \emph{witnessing} type, and there is a canonical way of statically computing such witnesses at type-level.
 In the above example, \hask{Member k ks} and \hask{HasFactor (h a) (RecUnion h ls rs)} are such constraints, witnessed by \hask{Index k ks} and \hask{IndexUnion k ls rs}, and such witnesses can be computed by \hask{FindIndex'} and \hask{UnionedIndex'}, respectively.
-In expressing the existence of witnesses, it allows a precise and robust handling to use the \hask{Given} class.
+The \hask{Given} class allows us to express the existence of witnesses with a precise and robust handling of constraint resolutions.
 Especially, this makes it easy to give ``fallback'' witness when canonical witness constructor can fail.
 Although we treated only extensible records here, we can apply the same technique to more general settings;
 we refer curious readers to \texttt{Data.Type.Path} module %

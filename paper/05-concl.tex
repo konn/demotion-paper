@@ -7,26 +7,26 @@ We demonstrated how we could use the constructive point of view, paying attentio
 As a concrete example, we have demonstrated:
 \begin{enumerate}
   \item Type-level arguments \emph{witnessing} evaluation paths in a type-family enables us to safely write corresponding singletonised function much easier afterwards.
-  \item Disjunctions of type constraints can be emulated if it is recoverable from \emph{witnesses} that is statically computable at type-level.
+  \item A way to emulate disjunctions of type constraints provided that constraints of interest can be recoverable from \emph{witnesses} that is statically computable at type-level.
   \item Combining \emph{witnesses} with \hask{Deferrable} class, we can implement a dependently-typed plugin system, which can be dynamically type-checked at \emph{runtime}.
   \item It is convenient to provide a unified witness type for extensionally equivalent, but not definitionally equivalent constraints; we took type-level equalities as an example.
 \end{enumerate}
 To summarise, what we demonstrated in this paper is not a single \emph{method}, but an insightful way of thinking when one designs dependently typed programs.
 
 \subsection{Related and future works}
-The examples of this paper incorporates many existing works on dependent types in Haskell: those include type-families~\cite{Kiselyov:2010aa}, data-type promotion~\cite{Yorgey:2012}, singletons~\cite{Eisenberg:2012}, Implicit Configuration~\cite{Kiselyov:2004aa}, to name a few.
-The Hasochism paper~\cite{10.1145/2503778.2503786} contains many examples of dependently-typed programming and obstacles in Haskel.
+The examples of this paper incorporate many existing works on dependent types in Haskell: those include type-families~\cite{Kiselyov:2010aa}, data-type promotion~\cite{Yorgey:2012}, singletons~\cite{Eisenberg:2012}, Implicit Configuration~\cite{Kiselyov:2004aa}, to name a few.
+The Hasochism paper~\cite{10.1145/2503778.2503786} contains many examples of dependently-typed programming and obstacles in Haskell.
 We demonstrated how useful the constructive point of view is when we write dependently-typed codes incorporating these prominent methods.
 There is a minor difference in the direction of interest, though.
-In dependently-typed programming in Haskell, the method to \emph{promote} functions and data-types is widely discussed~\cite{Yorgey:2012,Eisenberg:2012,10.1145/2503778.2503786}.
+In dependently-typed programming in Haskell, the method of \emph{promoting} functions and data-types is widely discussed~\cite{Yorgey:2012,Eisenberg:2012,10.1145/2503778.2503786}.
 On the other hand, many examples in the present paper arise when one tries to \emph{demote} type-level hacks down to the expression-level.
 Such needs of demotion arise when one wants to resolve dependently-typed constraints at runtime, as we saw in \Cref{sec:plugins}.
-The demotion-based approach has another advantage compared to the promotion-based one: the behaviours of macros for deriving definitions are much predictable.
+The demotion-based approach has another advantage compared to the promotion-based one: the behaviours of macros for deriving definitions are much more predictable.
 For example, in \texttt{singletons}~\cite{singletons} package, there are plenty of macro-generated type-families with names with seemingly random suffixes.
 This makes, for example, writing type-checker plugins to work with them rather tedious.
 
-We have used user-defined witnesses carrying instance information, such as singletons and equality witness.
-If once coherent explicit dictionary applications~\cite{Winant:2018wu} get implemented in GHC, we will be able to directly treat instance dictionaries as another kind of witnesses.
+We have used user-defined witnesses carrying instance information \emph{implicitly}, such as singletons and equality witness.
+If once coherent explicit dictionary applications, proposed by Winant and Devriese~\cite{Winant:2018wu}, get implemented in we will be able to manipulate instance dictionaries \emph{directly}.
 
 Since the contribution of this paper is a general point of view, there is much room for exploration of synergy with other methods with dependent types.
 For example, the method of Ghosts of Departed Proofs~\cite{Noonan:2018aa} shares the witness-aware spirit with the present paper.

@@ -27,7 +27,8 @@ instance Runnable p keys => RunsOn keys p
 Thus, each plugin \hask{p} is given with a type-level constraint \hask{Runnable p keys} (and its flipped version \hask{RunsOn keys p}) to determine if it is runnable with input stores with the given keys.
 A function \hask{processStore} takes an input store and (a singleton of) a list of plugin runnable on the given store and then returns the final outputs.
 This works well if one specifies type variables \hask{keys} and \hask{ps} \emph{statically}.
-Suppose that, however, now the situation is changed and we want to determine \hask{ps} \emph{dynamically}, depending on external configurations.
+Suppose that, however, now the situation is changed and we want to determine \hask{ps} \emph{dynamically}.
+Such needs arise naturally, for example, when one wants to enable/disable plugins based on external configuration file.
 This poses two challenges:
 \begin{enumerate}
   \item We have to resolve constraint \hask{All (RunsOn keys) p} at runtime, and
@@ -171,6 +172,9 @@ GreetOutput "Hi, Hi, You, from me!" :< EmptyRecord
 \end{repl}
 
 \subsection{Make it dynamic}
+So far we have developed a dependently-typed plugin system.
+In particular, plugins are specified at the \emph{type-level} and their runnability is checked \emph{statically} at compile-time, ensuring invariant required by plugins.
+The next challenge is to make this process \emph{dynamic}.
 OK, let's implement a dynamic variant of \hask{processStore}.
 In particular, we will make the resolution of \hask{Runnable} constraints dynamic, implementing the following function:
 
@@ -192,7 +196,7 @@ class Deferrable p where
   deferEither :: proxy p -> (p => r) 
               -> Either String r
 \end{code}
-This is provided in \hask{Data.Constraint.Deferrable} module from \texttt{constraints} package~\cite{Kmett:2020ab}, and it was first proposed by Dimitrios Vytiniotis.
+This is provided in \hask{Data.Constraint.Deferrable} module from \texttt{constraints} package~\cite{Kmett:2020ab}.
 For example, assume the following singletonised version of \hask{FindIndex}:
 \begin{code}
 sFindIndex :: Sing key -> SList keys
@@ -253,7 +257,7 @@ type family FindIndex k ks where
   FindIndex k (_ ': ks) =
     'There <$> FindIndex k ks  
 \end{code}
-Readers might notice that modification is needed to distinguish cluases by \emph{witnesses}, as we did in \Cref{sec:gcd}:
+Readers might notice that modification is needed to distinguish clauses by \emph{witnesses}, as we did in \Cref{sec:gcd}:
 \begin{code}
 type FindIndex :: forall k ks -> Maybe (Index k ks)
 type family FindIndex k ks where

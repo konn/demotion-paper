@@ -29,7 +29,7 @@ This paper is organised as follows.
   \item \Cref{sec:disj} demonstrates that we can emulate \emph{disjunctions} of type constraints, provided that constraints in question can be recovered from some statically computable \emph{witnesses}.
   We use a field accessor for a union of extensible records as an example.
   \item \Cref{sec:plugins} shows a practical example of a dependently-typed plugin system type-checkable dynamically at runtime.
-  There, we see how the combination of the Deferrable constraint pattern~\cite{Kmett:2020ab} and witness manipulation can be used to achieve this goal.
+  There, we see how the combination of the Deferrable constraint pattern~\cite{Kmett:2020ab} and witness manipulation can be used to achieve this.
   We also discuss the design of the witness of type-level equalities.
   \item Finally, we conclude in \Cref{sec:concl}.
 \end{itemize}
@@ -39,8 +39,9 @@ A complete working implementation is available \ifbool{maingo}{in the \href{http
 \subsection{Preliminaries}
 In this paper, we use the standard method of \emph{singletons}~\cite{Eisenberg:2012} to simulate dependent types in Haskell.
 Briefly, a singleton type \hask{Sing a} of a type-level value \hask{a} is the unique type that has the same structure as \hask{a}, on which we can pattern-match to retrieve its exact shape.
-\hask{Sing a} can be identified with a type \hask{a} but demoted to the expression-level.
-In particular, we assume the following API:
+\hask{Sing a} can be identified with a type \hask{a} but exists at the expression-level.
+For the detail of singleton-based programming, we refer readers to Eisenberg--Weirich~\cite{Eisenberg:2012} and Lindley--McBride~\cite{10.1145/2503778.2503786}.
+In what follows, we assume the following API:
 
 \begin{code}
 type family Sing :: k -> Type
@@ -64,7 +65,9 @@ type FromJust :: ErrorMessage -> Maybe a -> a
 type family FromJust err may where 
   FromJust err 'Nothing = TypeError err
   FromJust _ ('Just a)  = a
-
+\end{code}
+We also assume the following interface for the singletons for GHC's type-level natural numbers:
+\begin{code}
 type instance Sing = (SNat :: Nat -> Type)
 sNat :: KnownNat n => SNat n
 
@@ -72,8 +75,8 @@ withKnownNat :: SNat n -> (KnownNat n => r) -> r
 (%+) :: SNat n -> SNat m -> SNat (n + m)
 sMod :: SNat n -> SNat m -> SNat (n `Mod` m)
 \end{code}
-
-For the detail of singleton-based programming, we refer readers to Eisenberg--Weirich~\cite{Eisenberg:2012} and Lindley--McBride~\cite{10.1145/2503778.2503786}.
+\hask{Nat} is the kind of GHC's built-in type-level natural numbers, and \hask{KnownNat n} is the constraint stating that the compiler knows the concrete value of \hask{n} statically at the compile-time.
+These are provided in the \texttt{GHC.TypeNats} module.
 
 We use the following convention:
 \begin{enumerate}
