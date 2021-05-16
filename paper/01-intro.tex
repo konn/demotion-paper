@@ -22,17 +22,20 @@ i = 1 \text{ and } B: \psi
 That is, a witness of disjunction is given by a tuple of the tag recording which case holds and its corresponding witness.
 Although BHK interpretation is not as rigorous as Curry--Howard correspondence, its looseness allows us much broader insights, as we shall see in the present paper.
 
-This paper is organised as follows.
-\begin{itemize}
-  \item In \Cref{sec:gcd}, taking a type-level GCD as an example, we demonstrate how to \emph{demote} closed type-level functions involving pattern-matchings.
-  We suggest adding \emph{witnessing} arguments to such type-level functions to make the compiler aware of evaluation paths.
-  \item \Cref{sec:disj} demonstrates that we can emulate \emph{disjunctions} of type constraints, provided that constraints in question can be recovered from some statically computable \emph{witnesses}.
-  We use a field accessor for a union of extensible records as an example.
-  \item \Cref{sec:plugins} shows a practical example of a dependently-typed plugin system type-checkable dynamically at runtime.
-  There, we see how the combination of the Deferrable constraint pattern~\cite{Kmett:2020ab} and witness manipulation can be used to achieve this.
-  We also discuss the design of the witness of type-level equalities.
-  \item Finally, we conclude in \Cref{sec:concl}.
-\end{itemize}
+In particular, we propose the following techniques for dependently-typed programming in Haskell:
+\begin{enumerate}
+\item Augment type-level functions with ``witnesses'' so that we can recover the information of conditional branchings when we want to demote such functions with singletons;
+\item Using witnesses carrying the information of instance dictionaries to manipulate type-level constraints statically and dynamically.
+\item Particular design for the witness type of type-level equality.
+\end{enumerate}
+To see these, the paper is organised as follows.
+In \Cref{sec:gcd}, we use a type-level GCD as an example to demonstrate how type-level \emph{witnesses} can be used to \emph{demote} closed type-level functions involving pattern-matchings.
+\Cref{sec:disj} demonstrates that we can emulate \emph{disjunctions} of type constraints, provided that constraints in question can be recovered from some statically computable \emph{witnesses}.
+We use a field accessor for a union of extensible records as an example.
+\Cref{sec:plugins} shows a practical example of a dependently-typed plugin system type-checkable dynamically at runtime.
+There, we see how the combination of the Deferrable constraint pattern~\cite{Kmett:2020ab} and witness manipulation can be useful.
+We also discuss the design of the witness of type-level equalities.
+Finally, we conclude in \Cref{sec:concl}.
 
 A complete working implementation is available \ifbool{maingo}{in the \href{https://github.com/konn/demotion-paper/tree/master/demotion-examples}{\texttt{demotion-examples}} directory of the support repository~\cite{demotion-repo}}{as the supplementary tarball}.
 
