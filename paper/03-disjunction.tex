@@ -51,7 +51,7 @@ Here, \hask{h :: key -> Type} gives a container type for each label; for example
 We separate a container type \hask{h} from labels \hask{ks} to label each field with any types of any kinds other than \hask{Type}; for example with \hask{Symbol}.
 This separation also enables us more flexible and direct control over the constraints on field labels than unifying \hask{h} with \hask{ks}.
 
-In what follows, we implement \hask{Record} as a heterogeneous linked-list\cite{Kiselyov:2004}\footnotemark:
+In what follows, we implement \hask{Record} as a heterogeneous linked-list ala Kiselyov et al.~\cite{Kiselyov:2004zz}\footnotemark:
 \footnotetext{%
 In practice, it is much more convenient to allow specifying labels and corresponding field type independently, i.e.\ parametrise \hask{Record} over \hask{h :: key -> val -> Type}.
 And for efficiency, the underlying representation of an extensible record should be an array or vector with $O(1)$ random access.

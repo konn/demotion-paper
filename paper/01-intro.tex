@@ -26,10 +26,12 @@ In particular, we propose the following techniques for dependently-typed program
 \begin{enumerate}
 \item Augment type-level functions with ``witnesses'' so that we can recover the information of conditional branchings when we want to demote such functions with singletons;
 \item Using witnesses carrying the information of instance dictionaries to manipulate type-level constraints statically and dynamically.
-\item Particular design for the witness type of type-level equality.
+\item A design principle for the witness of type-level equality.
 \end{enumerate}
+These princples are useful when one wants to \emph{demote} type-level machinery down to expression level using \emph{singletons}.
+Such a need naturally arises when one already has a dependently-typed API and later one has to resolve type-level constraints dynamically at runtime.
 To see these, the paper is organised as follows.
-In \Cref{sec:gcd}, we use a type-level GCD as an example to demonstrate how type-level \emph{witnesses} can be used to \emph{demote} closed type-level functions involving pattern-matchings.
+In \Cref{sec:gcd}, we use a type-level GCD as an example to demonstrate how type-level \emph{witnesses} can be used for such a \emph{demotion} of closed type-level functions involving pattern-matchings.
 \Cref{sec:disj} demonstrates that we can emulate \emph{disjunctions} of type constraints, provided that constraints in question can be recovered from some statically computable \emph{witnesses}.
 We use a field accessor for a union of extensible records as an example.
 \Cref{sec:plugins} shows a practical example of a dependently-typed plugin system type-checkable dynamically at runtime.
@@ -85,6 +87,6 @@ We use the following convention:
 \begin{enumerate}
 \item We prefix singleton types with the capital \hask{S}: e.g.\ \hask{SNat n} is the type of a singleton of \hask{n :: Nat}.
 \item For a type-level function we use small \hask{s} as a prefix for singletonised expression-level function: \hask{sMod} is the singletonised version of \hask{Mod}.
-\item For operators, we prefix with \haskinline{%}: \haskinline{(%+)} is the singleton for the type-level \hask{+}.
+\item For operators, we prefix with \haskinline{%}: \haskinline{(%+)} is the singleton for the type-level \hask{(+)}.
 \end{enumerate}
 \end{document}
