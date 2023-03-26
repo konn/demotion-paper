@@ -2,7 +2,7 @@ local element_pat = "^  .*$"
 local file_line_pat = "^  (%b\"\")"
 local generated_pat = "^  %(generated%)$"
 local generated = false
-local generated_files = {}
+local generated_files = {lk}
 for line in io.lines() do
   local is_file = string.match( line, element_pat, 0 )
   local is_generated = string.match(line, generated_pat, 0)
